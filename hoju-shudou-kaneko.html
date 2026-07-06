@@ -190,6 +190,22 @@
         .btn-all-clear { background-color: #ef4444; color: white; width: 100%;
             margin-top: 10px; padding: 10px; font-size: 13px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; text-align: center; opacity: 0.8;
         }
+
+        /* 📋 補充履歴機能用：縦並びリストスタイル */
+        .history-section { margin-top: 35px; border-top: 3px dashed #cbd5e1; padding-top: 20px; }
+        .history-title { font-size: 15px; font-weight: bold; color: #0f172a; margin-bottom: 12px; }
+        .history-list { display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; padding-right: 4px; margin-bottom: 12px; }
+        .history-row-item { display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 10px; cursor: pointer; gap: 8px; transition: all 0.2s; }
+        .history-row-item:active { background: #f1f5f9; }
+        .history-row-item.active { background: #1e293b; border-color: #1e293b; color: white; }
+        .history-row-item.active .history-item-label { color: #f8fafc; }
+        .history-row-item.active .history-item-sub { color: #cbd5e1; }
+        .history-item-text { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+        .history-item-label { font-weight: bold; color: #1f2937; }
+        .history-item-sub { color: #64748b; font-size: 11px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+        .btn-history-del { background-color: #ef4444; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; height: 28px; display: flex; align-items: center; justify-content: center; z-index: 10; }
+        .btn-history-del:active { background-color: #dc2626; }
+        .history-empty { text-align: center; color: #94a3b8; padding: 25px; background: #fafafa; border: 1px dashed #cbd5e1; border-radius: 8px; font-size: 13px; }
     </style>
 </head>
 <body>
@@ -315,18 +331,39 @@
 
     <button id="csvBtn" class="btn-csv" disabled>Excel用CSVを一括ダウンロード</button>
     <button id="allClearBtn"  class="btn-all-clear" onclick="clearAllData()">⚠️ すべてのデータを完全クリア（初期化）</button>
+
+    <!-- 📋 補充履歴確認エリア -->
+    <div class="history-section">
+        <div class="history-title">📋 過去1週間の補充履歴 (確認用)</div>
+        <div id="historyTabs" class="history-list"></div>
+        
+        <div class="log-box" id="historyContentArea" style="display: none; max-height: 280px; background: #fafafa; border: 2px solid #cbd5e1; margin-top: 10px;">
+            <div id="historyMetaTitle" style="font-size: 12px; font-weight: bold; padding: 4px; color: #1e293b; border-bottom: 1px dashed #cbd5e1; margin-bottom: 5px;"></div>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 50%;">カテゴリー</th>
+                        <th style="width: 25%;">補充</th>
+                        <th style="width: 25%;">引取</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTableBody"></tbody>
+            </table>
+        </div>
+        <div id="historyEmpty" class="history-empty">過去1週間のダウンロード履歴はまだありません</div>
+    </div>
 </div>
 
 <script>
-    // 📱 iOS用の強制ズームキャンセルJavaScript (究極の防御)
+    // 📱 iOS用の強制ズームキャンセルJavaScript (究極の防御)[cite: 6]
     document.addEventListener('touchstart', (e) => {
-        if (e.touches.length > 1) { e.preventDefault(); } // 2本指ズームを禁止
+        if (e.touches.length > 1) { e.preventDefault(); } 
     }, { passive: false });
 
     let lastTouchEnd = 0;
     document.addEventListener('touchend', (e) => {
         const now = (new Date()).getTime();
-        if (now - lastTouchEnd <= 300) { e.preventDefault(); } // ダブルタップズームを物理破壊
+        if (now - lastTouchEnd <= 300) { e.preventDefault(); } 
         lastTouchEnd = now;
     }, false);
 
@@ -391,6 +428,8 @@
     const clearBtn = document.getElementById('clearBtn');
     const completedLocList = document.getElementById('completedLocList');
 
+    let currentSelectedHistoryId = null;
+
     window.addEventListener('DOMContentLoaded', () => {
         const today = new Date();
         const yyyy = today.getFullYear();
@@ -420,6 +459,7 @@
         renderTable();
         renderCompletedLocations();
         updateDisplay();
+        renderHistoryTabs();
     });
 
     function renderCategoryButtons() {
@@ -594,8 +634,13 @@
             renderCompletedLocations();
             localStorage.removeItem('hojuu_hand_data');
             localStorage.removeItem('hojuu_all_locations_data');
+            
+            localStorage.removeItem('hojuu_download_history_kaneko');
+            currentSelectedHistoryId = null;
+            renderHistoryTabs();
+
             playBeep(400, 0.5);
-            alert("すべてのデータを初期化しました。");
+            alert("すべてのデータおよび履歴を初期化しました。");
         }
     };
 
@@ -809,6 +854,7 @@
             fileLocLabel = `${firstLocName}等_${totalLocCount}箇所`;
         }
         
+        // 🚨 【絶対死守】修正出力フォーマット[cite: 6]
         const fileName = `${date4Digit}【${workerName}_補充伝票_${fileLocLabel} dream.csv`;
         let csvContent = "";
 
@@ -847,7 +893,184 @@
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+
+        saveDownloadedDataToHistory(rawDate, finalExportData);
     });
+
+    // =======================================================
+    // 📋 補充履歴機能のロジック
+    // =======================================================
+
+    function saveDownloadedDataToHistory(rawDate, exportData) {
+        let history = JSON.parse(localStorage.getItem('hojuu_download_history_kaneko') || '[]');
+        
+        const locKeys = Object.keys(exportData);
+        if (locKeys.length === 0) return;
+        
+        const allLocsStr = locKeys.join('、');
+
+        const newRecord = {
+            id: Date.now(),
+            dateVal: rawDate,
+            locLabel: allLocsStr, 
+            timestamp: new Date().getTime(),
+            details: exportData 
+        };
+
+        history = history.filter(h => !(h.dateVal === rawDate && h.locLabel === allLocsStr));
+        history.unshift(newRecord);
+
+        const oneWeekAgo = new Date().getTime() - (7 * 24 * 60 * 60 * 1000);
+        history = history.filter(h => h.timestamp >= oneWeekAgo);
+
+        localStorage.setItem('hojuu_download_history_kaneko', JSON.stringify(history));
+        
+        currentSelectedHistoryId = newRecord.id;
+        renderHistoryTabs();
+    }
+
+    function renderHistoryTabs() {
+        const history = JSON.parse(localStorage.getItem('hojuu_download_history_kaneko') || '[]');
+        const tabsContainer = document.getElementById('historyTabs');
+        const emptyEl = document.getElementById('historyEmpty');
+        const contentArea = document.getElementById('historyContentArea');
+
+        tabsContainer.innerHTML = '';
+
+        if (history.length === 0) {
+            emptyEl.style.display = 'block';
+            contentArea.style.display = 'none';
+            currentSelectedHistoryId = null;
+            return;
+        }
+
+        emptyEl.style.display = 'none';
+        contentArea.style.display = 'block';
+
+        if (!currentSelectedHistoryId || !history.some(h => h.id === currentSelectedHistoryId)) {
+            currentSelectedHistoryId = history[0].id;
+        }
+
+        history.forEach((h) => {
+            const isActive = h.id === currentSelectedHistoryId;
+            
+            const d = new Date(h.dateVal);
+            const weekDays = ['日', '月', '火', '水', '木', '金', '土'];
+            const dayOfWeek = isNaN(d.getDay()) ? '' : weekDays[d.getDay()];
+            
+            let displayDateStr = '日付不明';
+            if (h.dateVal && h.dateVal.length === 10) {
+                const parts = h.dateVal.split('-');
+                displayDateStr = `${parseInt(parts[1], 10)}/${parseInt(parts[2], 10)}`;
+            }
+
+            const rowItem = document.createElement('div');
+            rowItem.className = `history-row-item ${isActive ? 'active' : ''}`;
+            
+            rowItem.onclick = (e) => {
+                if(e.target.tagName.toLowerCase() === 'button') return;
+                currentSelectedHistoryId = h.id;
+                renderHistoryTabs();
+            };
+
+            const textBlock = document.createElement('div');
+            textBlock.className = 'history-item-text';
+            
+            const labelEl = document.createElement('div');
+            labelEl.className = 'history-item-label';
+            labelEl.textContent = `・${displayDateStr}保存分（${dayOfWeek}）`;
+            
+            const subEl = document.createElement('div');
+            subEl.className = 'history-item-sub';
+            subEl.textContent = `（${h.locLabel}）`;
+            
+            textBlock.appendChild(labelEl);
+            textBlock.appendChild(subEl);
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'btn-history-del';
+            delBtn.textContent = '削除';
+            delBtn.onclick = (e) => {
+                e.stopPropagation();
+                if(confirm(`【${displayDateStr}保存分】の履歴をリストから削除しますか？`)) {
+                    deleteHistoryItem(h.id);
+                }
+            };
+
+            rowItem.appendChild(textBlock);
+            rowItem.appendChild(delBtn);
+            tabsContainer.appendChild(rowItem);
+        });
+
+        const activeRecord = history.find(h => h.id === currentSelectedHistoryId);
+        if (activeRecord) {
+            showHistoryContent(activeRecord);
+        }
+    }
+
+    function deleteHistoryItem(id) {
+        let history = JSON.parse(localStorage.getItem('hojuu_download_history_kaneko') || '[]');
+        history = history.filter(h => h.id !== id);
+        localStorage.setItem('hojuu_download_history_kaneko', JSON.stringify(history));
+        
+        if (currentSelectedHistoryId === id) {
+            currentSelectedHistoryId = null;
+        }
+        renderHistoryTabs();
+    }
+
+    function showHistoryContent(record) {
+        const d = new Date(record.dateVal);
+        const weekDays = ['日', '月', '火', '水', '木', '金', '土'];
+        const dayOfWeek = isNaN(d.getDay()) ? '' : weekDays[d.getDay()];
+        
+        let displayDateStr = '不明';
+        if (record.dateVal && record.dateVal.length === 10) {
+            const parts = record.dateVal.split('-');
+            displayDateStr = `${parseInt(parts[1], 10)}/${parseInt(parts[2], 10)}`;
+        }
+        document.getElementById('historyMetaTitle').textContent = `📋 履歴詳細: ${displayDateStr}保存分 (${dayOfWeek})`;
+        
+        const tbody = document.getElementById('historyTableBody');
+        tbody.innerHTML = '';
+
+        Object.keys(record.details).forEach(locName => {
+            const locHeaderRow = `<tr style="background-color: #e2e8f0;">
+                <td colspan="3" style="text-align: left; font-weight: bold; color: #1e3a8a; padding-left: 5px;">📍 ${locName}</td>
+            </tr>`;
+            tbody.insertAdjacentHTML('beforeend', locHeaderRow);
+
+            const targetList = record.details[locName];
+
+            categoryMaster.forEach((cat) => {
+                const catItems = targetList.filter(item => item.categoryId === cat.id);
+                
+                if (catItems.length > 0) {
+                    const hojuuList = [];
+                    const hikitoriList = [];
+
+                    catItems.forEach(item => {
+                        if (item.count > 0) {
+                            hojuuList.push(item.count);
+                        } else if (item.count < 0) {
+                            hikitoriList.push(Math.abs(item.count));
+                        }
+                    });
+
+                    const hojuuStr = hojuuList.length > 0 ? hojuuList.join(',') : '';
+                    const hikitoriStr = hikitoriList.length > 0 ? hikitoriList.join(',') : '';
+
+                    const row = `<tr>
+                        <td style="text-align:left; font-weight:bold; padding-left:12px; color: #475569;">${cat.name}</td>
+                        <td style="font-weight:bold; color:#1e3a8a;">${hojuuStr}</td>
+                        <td style="font-weight:bold; color:#b91c1c;">${hikitoriStr}</td>
+                    </tr>`;
+                    tbody.insertAdjacentHTML('beforeend', row);
+                }
+            });
+        });
+    }
 </script>
+
 </body>
 </html>
