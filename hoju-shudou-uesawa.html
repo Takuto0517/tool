@@ -101,10 +101,14 @@
         .btn-category.hidden-item { display: none !important;
         }
 
-        .grp-carddas .btn-category.selected { background: #fef2f2; border-color: #ef4444; color: #b91c1c; }
-        .grp-capsule .btn-category.selected { background: #f0fdf4; border-color: #22c55e; color: #15803d; }
-        .grp-vag .btn-category.selected { background: #fdf2ff; border-color: #d946ef; color: #a21caf; }
-        .grp-cardgame .btn-category.selected { background: #fffbeb; border-color: #f59e0b; color: #b45309; }
+        .grp-carddas .btn-category.selected { background: #fef2f2; border-color: #ef4444; color: #b91c1c;
+        }
+        .grp-capsule .btn-category.selected { background: #f0fdf4; border-color: #22c55e; color: #15803d;
+        }
+        .grp-vag .btn-category.selected { background: #fdf2ff; border-color: #d946ef; color: #a21caf;
+        }
+        .grp-cardgame .btn-category.selected { background: #fffbeb; border-color: #f59e0b; color: #b45309;
+        }
 
         /* 🔢 電卓風表示・テンキー */
         .calc-display { background: #1e293b;
@@ -127,12 +131,18 @@
             background: #ef4444; color: white; border-color: #dc2626; font-size: 18px; }
         .btn-calc.ok:active { background: #dc2626;
         }
-        .lot-container { grid-column: span 4; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+        .lot-container { grid-column: span 4; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+        }
 
         /* ➕ ショートカットカテゴリーエリアの独自スタイル */
-        .shortcut-category-container { background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 8px; padding: 8px; margin-top: 5px; margin-bottom: 5px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-        .btn-shortcut-cat { background: white; border: 2px solid #cbd5e1; border-radius: 6px; padding: 10px 2px; font-size: 13px; font-weight: bold; color: #475569; cursor: pointer; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-        .btn-shortcut-cat.selected { background: #f0fdf4; border-color: #22c55e; color: #15803d; box-shadow: 0 0 0 2px rgba(21,128,61,0.2); }
+        .shortcut-category-container { background: #f8fafc;
+            border: 2px solid #cbd5e1; border-radius: 8px; padding: 8px; margin-top: 5px; margin-bottom: 5px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+        }
+        .btn-shortcut-cat { background: white; border: 2px solid #cbd5e1; border-radius: 6px;
+            padding: 10px 2px; font-size: 13px; font-weight: bold; color: #475569; cursor: pointer; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .btn-shortcut-cat.selected { background: #f0fdf4; border-color: #22c55e;
+            color: #15803d; box-shadow: 0 0 0 2px rgba(21,128,61,0.2); }
 
         /* 📋 テーブル・入力履歴 */
         table { width: 100%;
@@ -171,18 +181,32 @@
         }
 
         /* 📋 補充履歴機能用スタイル */
-        .history-section { margin-top: 35px; border-top: 3px dashed #cbd5e1; padding-top: 20px; }
-        .history-title { font-size: 15px; font-weight: bold; color: #0f172a; margin-bottom: 12px; }
-        .history-list { display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; padding-right: 4px; margin-bottom: 12px; }
-        .history-row-item { display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 10px; cursor: pointer; gap: 8px; transition: all 0.2s; }
-        .history-row-item:active { background: #f1f5f9; }
-        .history-row-item.active { background: #1e293b; border-color: #1e293b; color: white; }
-        .history-row-item.active .history-item-label { color: #f8fafc; }
-        .history-item-text { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
-        .history-item-label { font-weight: bold; color: #1f2937; }
-        .btn-history-del { background-color: #ef4444; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; height: 28px; display: flex; align-items: center; justify-content: center; z-index: 10; }
-        .btn-history-del:active { background-color: #dc2626; }
-        .history-empty { text-align: center; color: #94a3b8; padding: 25px; background: #fafafa; border: 1px dashed #cbd5e1; border-radius: 8px; font-size: 13px; }
+        .history-section { margin-top: 35px;
+            border-top: 3px dashed #cbd5e1; padding-top: 20px; }
+        .history-title { font-size: 15px; font-weight: bold;
+            color: #0f172a; margin-bottom: 12px; }
+        .history-list { display: flex; flex-direction: column; gap: 8px;
+            max-height: 240px; overflow-y: auto; padding-right: 4px; margin-bottom: 12px; }
+        .history-row-item { display: flex;
+            align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 10px; cursor: pointer; gap: 8px;
+            transition: all 0.2s; }
+        .history-row-item:active { background: #f1f5f9;
+        }
+        .history-row-item.active { background: #1e293b; border-color: #1e293b; color: white;
+        }
+        .history-row-item.active .history-item-label { color: #f8fafc;
+        }
+        .history-item-text { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            font-size: 13px; }
+        .history-item-label { font-weight: bold; color: #1f2937;
+        }
+        .btn-history-del { background-color: #ef4444; color: white; border: none; padding: 6px 10px;
+            border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; height: 28px; display: flex; align-items: center; justify-content: center; z-index: 10;
+        }
+        .btn-history-del:active { background-color: #dc2626;
+        }
+        .history-empty { text-align: center; color: #94a3b8; padding: 25px; background: #fafafa;
+            border: 1px dashed #cbd5e1; border-radius: 8px; font-size: 13px; }
     </style>
 </head>
 <body>
@@ -203,7 +227,7 @@
         </div>
         <div class="meta-row-center">
             <label for="inputWorker">👤 作業者:</label>
-            <input type="text" id="inputWorker" value="上澤（000010）" disabled>
+            <input type="text" id="inputWorker" value="上澤（000013）" disabled>
         </div>
     </div>
 
@@ -271,7 +295,6 @@
         </div>
     </div>
 
-    <!-- 📋 最速アクセス用カテゴリー変更ショートカットエリア（バグ対策済） -->
     <div class="shortcut-category-container">
         <button id="shortcut-cat-m3" class="btn-shortcut-cat" onclick="selectCategory('m3')">カプセル300</button>
         <button id="shortcut-cat-m4" class="btn-shortcut-cat" onclick="selectCategory('m4')">カプセル400</button>
@@ -303,7 +326,6 @@
     <button id="csvBtn" class="btn-csv" disabled>Excel用CSVを一括ダウンロード</button>
     <button id="allClearBtn" class="btn-all-clear" onclick="clearAllData()">⚠️ 入力中のデータをクリア（初期化）</button>
 
-    <!-- 📋 補充履歴確認エリア -->
     <div class="history-section">
         <div class="history-title">📋 過去1週間の補充履歴 (確認用)</div>
         <div id="historyTabs" class="history-list"></div>
@@ -338,7 +360,7 @@
         { id: "c5", name: "Jカード200", csvName: "ｼﾞｬﾝﾎﾞｶｰﾄﾞﾀﾞｽ200", group: "carddas" },
         { id: "c6", name: "Jカード300", csvName: "ｼﾞｬﾝﾎﾞｶｰﾄﾞﾀﾞｽ300", group: "carddas" },
         { id: "m1", name: "ｶﾌﾟｾﾙ100", csvName: "ｶﾌﾟｾﾙ100/", group: "capsule" },
-        { id: "m2", name: "ｶﾌﾟｾﾙ200", csvName: "ｶﾌﾟｾﾙ200/ﾌﾟチコロ200", group: "capsule" },
+        { id: "m2", name: "ｶﾌﾟｾﾙ200", csvName: "ｶﾌﾟｾﾙ200/ﾌﾟﾁｺﾛ200", group: "capsule" },
         { id: "m3", name: "ｶﾌﾟｾﾙ300", csvName: "ｶﾌﾟｾﾙ300", group: "capsule" },
         { id: "m4", name: "ｶﾌﾟｾﾙ400", csvName: "ｶﾌﾟｾﾙ400", group: "capsule" },
         { id: "m5", name: "ｶﾌﾟｾﾙ500", csvName: "ｶﾌﾟｾﾙ500", group: "capsule" },
@@ -352,15 +374,13 @@
         { id: "g2", name: "アイプリバース", csvName: "ﾍﾟﾆｨ/ｱｲﾌﾟﾘﾊﾞｰｽ-ｱｲﾌﾟﾘｲﾝｸ", group: "cardgame" },
         { id: "g3", name: "フレンダピック", csvName: "ﾍﾟニｲ/ﾎﾟｹモンﾌﾚﾝﾀﾞ", group: "cardgame" }
     ];
-
     const groupNames = {
         carddas: "ーー カードダス ーー",
         capsule: "ーー カプセル ーー",
         vag: "ーー VAG ーー",
         cardgame: "ーー カードゲーム ーー"
     };
-
-    let dataList = []; 
+    let dataList = [];
     let allLocationsData = {}; 
 
     let selectedCategoryId = null;
@@ -384,6 +404,7 @@
 
         const savedData = localStorage.getItem('hojuu_hand_data_kamisawa');
         const savedAllData = localStorage.getItem('hojuu_all_locations_data_kamisawa');
+        
         const savedLocation = localStorage.getItem('hojuu_hand_location_kamisawa');
         const savedDate = localStorage.getItem('hojuu_hand_date_kamisawa');
         const savedFilter = localStorage.getItem('hojuu_visible_categories_kamisawa');
@@ -392,7 +413,6 @@
         if (savedAllData) allLocationsData = JSON.parse(savedAllData);
         if (savedLocation && locationMaster[savedLocation]) document.getElementById('inputLocation').value = savedLocation;
         if (savedDate) document.getElementById('inputDate').value = savedDate;
-
         if (savedFilter) {
             visibleCategories = JSON.parse(savedFilter);
         } else {
@@ -407,7 +427,6 @@
         updateDisplay();
         renderHistoryTabs();
     });
-
     function renderCategoryButtons() {
         const groups = { carddas: "grid-carddas", capsule: "grid-capsule", vag: "grid-vag", cardgame: "grid-cardgame" };
         Object.values(groups).forEach(id => document.getElementById(id).innerHTML = "");
@@ -421,7 +440,6 @@
             `;
             document.getElementById(groups[c.group]).insertAdjacentHTML('beforeend', btnHtml);
         });
-        
         updateShortcutButtonStyles();
     }
 
@@ -686,7 +704,7 @@
             }
 
             const itemInfo = categoryMaster.find(c => c.id === selectedCategoryId);
-            dataList.push({ 
+            dataList.push({
                 categoryId: selectedCategoryId, 
                 categoryName: itemInfo.name, 
                 count: count,
@@ -793,7 +811,7 @@
             if (finalExportData[currentLoc]) {
                 finalExportData[currentLoc] = finalExportData[currentLoc].concat(dataList);
             } else {
-                finalExportData[finalExportData] = [...dataList];
+                finalExportData[currentLoc] = [...dataList]; // 💡[object Object]バグを修正しました
             }
         }
 
@@ -806,7 +824,7 @@
         if (dateStr.length === 8) { date4Digit = dateStr.slice(4); }
 
         const workerName = "上澤";
-        const workerCodeStr = "000010";
+        const workerCodeStr = "000013";
         const totalLocCount = Object.keys(finalExportData).length;
         const firstLocName = Object.keys(finalExportData)[0].replace(/[\s\u3000]/g, '');
         
@@ -864,14 +882,12 @@
 
     function saveDownloadedDataToHistory(rawDate, exportData) {
         let history = JSON.parse(localStorage.getItem('hojuu_download_history_kamisawa') || '[]');
-        
         const newRecord = {
             id: Date.now(),
             dateVal: rawDate,
             timestamp: new Date().getTime(),
             details: exportData 
         };
-
         history = history.filter(h => h.dateVal !== rawDate);
         history.unshift(newRecord);
 
