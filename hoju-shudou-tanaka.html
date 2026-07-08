@@ -70,6 +70,11 @@
         .btn-calc.ok:active { background: #dc2626; }
         .lot-container { grid-column: span 4; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 
+        /* ➕ ショートカットカテゴリーエリアの独自スタイル（上澤さんverより移植） */
+        .shortcut-category-container { background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 8px; padding: 8px; margin-top: 5px; margin-bottom: 5px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+        .btn-shortcut-cat { background: white; border: 2px solid #cbd5e1; border-radius: 6px; padding: 10px 2px; font-size: 13px; font-weight: bold; color: #475569; cursor: pointer; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .btn-shortcut-cat.selected { background: #f0fdf4; border-color: #22c55e; color: #15803d; box-shadow: 0 0 0 2px rgba(21,128,61,0.2); }
+
         /* 📋 テーブル・入力履歴 */
         table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 13px; background: white; table-layout: fixed; }
         th, td { border: 1px solid #cbd5e1; padding: 8px 4px; text-align: center; word-break: break-all; }
@@ -226,6 +231,12 @@
         </div>
     </div>
 
+    <div class="shortcut-category-container">
+        <button id="shortcut-cat-m3" class="btn-shortcut-cat" onclick="selectCategory('m3')">カプセル300</button>
+        <button id="shortcut-cat-m4" class="btn-shortcut-cat" onclick="selectCategory('m4')">カプセル400</button>
+        <button id="shortcut-cat-m5" class="btn-shortcut-cat" onclick="selectCategory('m5')">カプセル500</button>
+    </div>
+
     <button id="locCompleteBtn" class="btn-location-complete" onclick="completeCurrentLocation()">➔ この登録地での集計を完了する</button>
 
     <h3 style="font-size: 14px; margin-bottom: 5px; margin-top: 15px; color:#1e293b;">📋 現在の登録地のデータ一覧</h3>
@@ -251,7 +262,6 @@
     <button id="csvBtn" class="btn-csv" disabled>Excel用CSVを一括ダウンロード</button>
     <button id="allClearBtn" class="btn-all-clear" onclick="clearAllData()">⚠️ 入力データをクリア（初期化）</button>
 
-    <!-- 📋 補充履歴確認エリア -->
     <div class="history-section">
         <div class="history-title">📋 過去1週間の補充履歴 (確認用)</div>
         <div id="historyTabs" class="history-list"></div>
@@ -274,7 +284,6 @@
 </div>
 
 <script>
-    // マスターデータと基本ロジック[cite: 4]
     const locationMaster = {
         "ｲｴﾛｰｻﾌﾞﾏﾘﾝ柏": "003163",
         "ﾂﾀﾔ そよら成田ﾆｭｰﾀｳﾝ": "003694",
@@ -308,7 +317,6 @@
         "WonderGOO 日立中央": "087083",
         "WonderGOO 野田桜の里": "087084"
     };
-
     const locationDefaultCategories = {
         "ｲｴﾛｰｻﾌﾞﾏﾘﾝ柏": ["ｶﾌﾟｾﾙ100", "ｶﾌﾟｾﾙ200", "ｶﾌﾟｾﾙ300", "ｶﾌﾟｾﾙ400", "ｶﾌﾟｾﾙ500"],
         "ﾂﾀﾔ そよら成田ﾆｭｰﾀｳﾝ": ["VAGｶﾌﾟｾﾙ500"],
@@ -341,7 +349,6 @@
         "WonderGOO 日立中央": ["ｶﾌﾟｾﾙ100", "ｶﾌﾟｾﾙ200", "ｶﾌﾟｾﾙ300", "ｶﾌﾟｾﾙ400", "ｶﾌﾟｾﾙ500"],
         "WonderGOO 野田桜の里": ["ｶﾌﾟｾﾙ100", "ｶﾌﾟｾﾙ200", "ｶﾌﾟｾﾙ300", "ｶﾌﾟｾﾙ400", "ｶﾌﾟｾﾙ500"]
     };
-
     const categoryMaster = [
         { id: "c1", name: "ｶｰﾄﾞﾀﾞｽ100", csvName: "ｶｰﾄﾞﾀﾞｽ100", group: "carddas" },
         { id: "c2", name: "ｶｰﾄﾞﾀﾞｽ200", csvName: "ｶｰﾄﾞﾀﾞｽ200", group: "carddas" },
@@ -350,7 +357,7 @@
         { id: "c5", name: "Jカード200", csvName: "ｼﾞｬﾝﾎﾞｶｰﾄﾞﾀﾞｽ200", group: "carddas" },
         { id: "c6", name: "Jカード300", csvName: "ｼﾞｬﾝﾎﾞｶｰﾄﾞﾀﾞｽ300", group: "carddas" },
         { id: "m1", name: "ｶﾌﾟｾﾙ100", csvName: "ｶﾌﾟｾﾙ100/", group: "capsule" },
-        { id: "m2", name: "ｶﾌﾟｾﾙ200", csvName: "ｶﾌﾟｾﾙ200/ﾌﾟチｺﾛ200", group: "capsule" },
+        { id: "m2", name: "ｶﾌﾟｾﾙ200", csvName: "ｶﾌﾟｾﾙ200/ﾌﾟﾁｺﾛ200", group: "capsule" },
         { id: "m3", name: "ｶﾌﾟｾﾙ300", csvName: "ｶﾌﾟｾﾙ300", group: "capsule" },
         { id: "m4", name: "ｶﾌﾟｾﾙ400", csvName: "ｶﾌﾟｾﾙ400", group: "capsule" },
         { id: "m5", name: "ｶﾌﾟｾﾙ500", csvName: "ｶﾌﾟｾﾙ500", group: "capsule" },
@@ -364,21 +371,18 @@
         { id: "g2", name: "アイプリバース", csvName: "ﾍﾟﾆｨ/ｱｲﾌﾟﾘﾊﾞｰｽ-ｱｲﾌﾟﾘｲﾝｸ", group: "cardgame" },
         { id: "g3", name: "フレンダピック", csvName: "ﾍﾟﾆｲ/ﾎﾟｹﾓﾝﾌﾚﾝﾀﾞ", group: "cardgame" }
     ];
-
     const groupNames = {
         carddas: "ーー カードダス ーー",
         capsule: "ーー カプセル ーー",
         vag: "ーー VAG ーー",
         cardgame: "ーー カードゲーム ーー"
     };
-
     let dataList = []; 
     let allLocationsData = {}; 
 
     let selectedCategoryId = null;
     let currentCountStr = "";
     let visibleCategories = {};
-
     const calcDisplay = document.getElementById('calcDisplay');
     const dataTable = document.getElementById('dataTable');
     const csvBtn = document.getElementById('csvBtn');
@@ -405,7 +409,6 @@
         if (savedAllData) allLocationsData = JSON.parse(savedAllData);
         if (savedLocation && locationMaster[savedLocation]) document.getElementById('inputLocation').value = savedLocation;
         if (savedDate) document.getElementById('inputDate').value = savedDate;
-
         if (savedFilter) {
             visibleCategories = JSON.parse(savedFilter);
         } else {
@@ -447,6 +450,7 @@
             `;
             document.getElementById(groups[c.group]).insertAdjacentHTML('beforeend', btnHtml);
         });
+        updateShortcutButtonStyles(); // 💡 ショートカット選択状態の連動
     }
 
     function renderFilterOptions() {
@@ -524,7 +528,6 @@
     function onChangeLocation() {
         const loc = document.getElementById('inputLocation').value;
         localStorage.setItem('hojuu_hand_location_tanaka', loc);
-        
         applyLocationDefaultFilter(loc);
         renderCategoryButtons();
         renderFilterOptions();
@@ -627,6 +630,7 @@
         selectedCategoryId = null;
         currentCountStr = "";
         document.querySelectorAll('.btn-category').forEach(b => b.classList.remove('selected'));
+        updateShortcutButtonStyles(); // 💡 ショートカット初期化
         renderTable();
         updateDisplay();
     }
@@ -634,10 +638,21 @@
     function selectCategory(id) {
         selectedCategoryId = id;
         document.querySelectorAll('.btn-category').forEach(btn => btn.classList.remove('selected'));
-        document.getElementById(`btn-cat-${id}`).classList.add('selected');
+        const mainBtn = document.getElementById(`btn-cat-${id}`);
+        if(mainBtn) mainBtn.classList.add('selected');
+        
+        updateShortcutButtonStyles(); // 💡 ショートカットスタイル連動
+        
         if(currentCountStr === "") currentCountStr = "0";
         updateDisplay();
         playBeep(800, 0.05);
+    }
+
+    function updateShortcutButtonStyles() {
+        document.querySelectorAll('.btn-shortcut-cat').forEach(b => b.classList.remove('selected'));
+        if (selectedCategoryId === 'm3') document.getElementById('shortcut-cat-m3').classList.add('selected');
+        if (selectedCategoryId === 'm4') document.getElementById('shortcut-cat-m4').classList.add('selected');
+        if (selectedCategoryId === 'm5') document.getElementById('shortcut-cat-m5').classList.add('selected');
     }
 
     function pressNum(num) {
@@ -719,6 +734,8 @@
             renderTable();
             saveToStorage();
             currentCountStr = "0";
+            
+            if (navigator.vibrate) { navigator.vibrate([40, 60, 40]); } // 上澤さんver同様のハプティクス
             playBeep(1000, 0.15);
         }
         updateDisplay();
@@ -831,9 +848,7 @@
             fileLocLabel = `${firstLocName}等_${totalLocCount}箇所`;
         }
         
-        // 🚨 【絶対死守】前回の修正出力フォーマット[cite: 4]
         const fileName = `${date4Digit}【${workerName}_補充伝票_${fileLocLabel} dream.csv`;
-
         let csvContent = "";
         Object.keys(finalExportData).forEach(locName => {
             const customerCode = locationMaster[locName] || "000000";
@@ -874,19 +889,12 @@
         saveDownloadedDataToHistory(rawDate, finalExportData);
     });
 
-    // =======================================================
-    // 📋 補充履歴機能のロジック (複数登録地名の並列展開仕様)
-    // =======================================================
-
     function saveDownloadedDataToHistory(rawDate, exportData) {
         let history = JSON.parse(localStorage.getItem('hojuu_download_history_tanaka') || '[]');
-        
         const locKeys = Object.keys(exportData);
         if (locKeys.length === 0) return;
         
-        // 💡 箇所の省略をせず「、」区切りですべて結合する
         const allLocsStr = locKeys.join('、');
-
         const newRecord = {
             id: Date.now(),
             dateVal: rawDate,
@@ -894,11 +902,8 @@
             timestamp: new Date().getTime(),
             details: exportData 
         };
-
         history = history.filter(h => !(h.dateVal === rawDate && h.locLabel === allLocsStr));
         history.unshift(newRecord);
-
-        // 📅 1週間（7日前）より古いログを自動削除
         const oneWeekAgo = new Date().getTime() - (7 * 24 * 60 * 60 * 1000);
         history = history.filter(h => h.timestamp >= oneWeekAgo);
 
@@ -915,7 +920,6 @@
         const contentArea = document.getElementById('historyContentArea');
 
         tabsContainer.innerHTML = '';
-
         if (history.length === 0) {
             emptyEl.style.display = 'block';
             contentArea.style.display = 'none';
@@ -932,11 +936,10 @@
 
         history.forEach((h) => {
             const isActive = h.id === currentSelectedHistoryId;
-            
             const d = new Date(h.dateVal);
             const weekDays = ['日', '月', '火', '水', '木', '金', '土'];
             const dayOfWeek = isNaN(d.getDay()) ? '' : weekDays[d.getDay()];
-            
+     
             let displayDateStr = '日付不明';
             if (h.dateVal && h.dateVal.length === 10) {
                 const parts = h.dateVal.split('-');
@@ -954,19 +957,16 @@
 
             const textBlock = document.createElement('div');
             textBlock.className = 'history-item-text';
-            
             const labelEl = document.createElement('div');
             labelEl.className = 'history-item-label';
             labelEl.textContent = `・${displayDateStr}保存分（${dayOfWeek}）`;
             
             const subEl = document.createElement('div');
             subEl.className = 'history-item-sub';
-            // 💡 複数箇所がそのまま並列で表示されます (溢れた場合はCSSで自動カット処理)
             subEl.textContent = `（${h.locLabel}）`;
             
             textBlock.appendChild(labelEl);
             textBlock.appendChild(subEl);
-
             const delBtn = document.createElement('button');
             delBtn.className = 'btn-history-del';
             delBtn.textContent = '削除';
@@ -981,7 +981,6 @@
             rowItem.appendChild(delBtn);
             tabsContainer.appendChild(rowItem);
         });
-
         const activeRecord = history.find(h => h.id === currentSelectedHistoryId);
         if (activeRecord) {
             showHistoryContent(activeRecord);
@@ -1003,14 +1002,12 @@
         const d = new Date(record.dateVal);
         const weekDays = ['日', '月', '火', '水', '木', '金', '土'];
         const dayOfWeek = isNaN(d.getDay()) ? '' : weekDays[d.getDay()];
-        
         let displayDateStr = '不明';
         if (record.dateVal && record.dateVal.length === 10) {
             const parts = record.dateVal.split('-');
             displayDateStr = `${parseInt(parts[1], 10)}/${parseInt(parts[2], 10)}`;
         }
         document.getElementById('historyMetaTitle').textContent = `📋 履歴詳細: ${displayDateStr}保存分 (${dayOfWeek})`;
-        
         const tbody = document.getElementById('historyTableBody');
         tbody.innerHTML = '';
 
@@ -1039,7 +1036,6 @@
 
                     const hojuuStr = hojuuList.length > 0 ? hojuuList.join(',') : '';
                     const hikitoriStr = hikitoriList.length > 0 ? hikitoriList.join(',') : '';
-
                     const row = `<tr>
                         <td style="text-align:left; font-weight:bold; padding-left:12px; color: #475569;">${cat.name}</td>
                         <td style="font-weight:bold; color:#1e3a8a;">${hojuuStr}</td>
