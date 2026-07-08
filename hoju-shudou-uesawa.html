@@ -129,6 +129,11 @@
         }
         .lot-container { grid-column: span 4; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 
+        /* ➕ ショートカットカテゴリーエリアの独自スタイル */
+        .shortcut-category-container { background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 8px; padding: 8px; margin-top: 5px; margin-bottom: 5px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+        .btn-shortcut-cat { background: white; border: 2px solid #cbd5e1; border-radius: 6px; padding: 10px 2px; font-size: 13px; font-weight: bold; color: #475569; cursor: pointer; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .btn-shortcut-cat.selected { background: #f0fdf4; border-color: #22c55e; color: #15803d; box-shadow: 0 0 0 2px rgba(21,128,61,0.2); }
+
         /* 📋 テーブル・入力履歴 */
         table { width: 100%;
             border-collapse: collapse; margin-top: 5px; font-size: 13px; background: white; table-layout: fixed;
@@ -266,6 +271,13 @@
         </div>
     </div>
 
+    <!-- 📋 最速アクセス用カテゴリー変更ショートカットエリア（バグ対策済） -->
+    <div class="shortcut-category-container">
+        <button id="shortcut-cat-m3" class="btn-shortcut-cat" onclick="selectCategory('m3')">カプセル300</button>
+        <button id="shortcut-cat-m4" class="btn-shortcut-cat" onclick="selectCategory('m4')">カプセル400</button>
+        <button id="shortcut-cat-m5" class="btn-shortcut-cat" onclick="selectCategory('m5')">カプセル500</button>
+    </div>
+
     <button id="locCompleteBtn" class="btn-location-complete" onclick="completeCurrentLocation()">➔ この登録地での集計を完了する</button>
 
     <h3 style="font-size: 14px; margin-bottom: 5px; margin-top: 15px; color:#1e293b;">📋 現在の登録地のデータ一覧</h3>
@@ -338,7 +350,7 @@
         { id: "v1", name: "VAGｶﾌﾟｾﾙ500", csvName: "VAGｶﾌﾟｾﾙ500", group: "vag" },
         { id: "g1", name: "ひみつのアイプリ", csvName: "ﾍﾟﾆｨ/ﾋﾐﾂﾉｱｲﾌﾟﾘ-ｱｲﾌﾟﾘｶｰﾄﾞ", group: "cardgame" },
         { id: "g2", name: "アイプリバース", csvName: "ﾍﾟﾆｨ/ｱｲﾌﾟﾘﾊﾞｰｽ-ｱｲﾌﾟﾘｲﾝｸ", group: "cardgame" },
-        { id: "g3", name: "フレンダピック", csvName: "ﾍﾟﾆｲ/ﾎﾟｹﾓﾝﾌﾚﾝﾀﾞ", group: "cardgame" }
+        { id: "g3", name: "フレンダピック", csvName: "ﾍﾟニｲ/ﾎﾟｹモンﾌﾚﾝﾀﾞ", group: "cardgame" }
     ];
 
     const groupNames = {
@@ -409,6 +421,8 @@
             `;
             document.getElementById(groups[c.group]).insertAdjacentHTML('beforeend', btnHtml);
         });
+        
+        updateShortcutButtonStyles();
     }
 
     function renderFilterOptions() {
@@ -445,7 +459,7 @@
             opts.style.display = 'none';
             arrow.innerText = '▼';
         } else {
-            opts.style.display === 'flex';
+            opts.style.display = 'flex';
             arrow.innerText = '▲';
         }
     }
@@ -583,10 +597,22 @@
     function selectCategory(id) {
         selectedCategoryId = id;
         document.querySelectorAll('.btn-category').forEach(btn => btn.classList.remove('selected'));
-        document.getElementById(`btn-cat-${id}`).classList.add('selected');
+        
+        const mainBtn = document.getElementById(`btn-cat-${id}`);
+        if(mainBtn) mainBtn.classList.add('selected');
+        
+        updateShortcutButtonStyles();
+        
         if(currentCountStr === "") currentCountStr = "0";
         updateDisplay();
         playBeep(800, 0.05);
+    }
+
+    function updateShortcutButtonStyles() {
+        document.querySelectorAll('.btn-shortcut-cat').forEach(b => b.classList.remove('selected'));
+        if (selectedCategoryId === 'm3') document.getElementById('shortcut-cat-m3').classList.add('selected');
+        if (selectedCategoryId === 'm4') document.getElementById('shortcut-cat-m4').classList.add('selected');
+        if (selectedCategoryId === 'm5') document.getElementById('shortcut-cat-m5').classList.add('selected');
     }
 
     function pressNum(num) {
@@ -669,9 +695,17 @@
             renderTable();
             saveToStorage();
             currentCountStr = "0";
+            
+            triggerHapticFeedback();
             playBeep(1000, 0.15);
         }
         updateDisplay();
+    }
+
+    function triggerHapticFeedback() {
+        if (navigator.vibrate) {
+            navigator.vibrate([40, 60, 40]);
+        }
     }
 
     function updateDisplay() {
@@ -781,7 +815,7 @@
             fileLocLabel = `${firstLocName}等_${totalLocCount}箇所`;
         }
         
-        // 🚨 【絶対死守】修正出力フォーマット
+        // 🚨 【絶対死守】前回の修正出力フォーマット
         const fileName = `${date4Digit}【${workerName}_補充伝票_${fileLocLabel} dream.csv`;
         let csvContent = "";
 
@@ -831,7 +865,6 @@
     function saveDownloadedDataToHistory(rawDate, exportData) {
         let history = JSON.parse(localStorage.getItem('hojuu_download_history_kamisawa') || '[]');
         
-        // 💡 上澤さんverは店舗名を結合せず、固定レコードとして保存します
         const newRecord = {
             id: Date.now(),
             dateVal: rawDate,
@@ -898,7 +931,6 @@
             textBlock.className = 'history-item-text';
             const labelEl = document.createElement('div');
             labelEl.className = 'history-item-label';
-            // 💡 サブテキストの店舗名表示をオミットし、スッキリした箇条書きにします
             labelEl.textContent = `・${displayDateStr}保存分（${dayOfWeek}）`;
             textBlock.appendChild(labelEl);
 
