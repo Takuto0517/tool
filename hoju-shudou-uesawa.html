@@ -837,22 +837,38 @@
         const fileName = `${date4Digit}【${workerName}_補充伝票_${fileLocLabel} dream.csv`;
         let csvContent = "";
 
-        Object.keys(finalExportData).forEach(locName => {
+      Object.keys(finalExportData).forEach(locName => {
             const customerCode = locationMaster[locName] || "000000";
             const targetList = finalExportData[locName];
 
+            // 1. 各カテゴリーの出現回数をカウント（抽出時の優先順位ソートに使用）
             const counts = {};
             targetList.forEach(item => { counts[item.categoryId] = (counts[item.categoryId] || 0) + 1; });
             const masterOrder = {};
             categoryMaster.forEach((c, idx) => { masterOrder[c.id] = idx; });
 
-            const sortedList = [...targetList].sort((a, b) => {
+            // 2. 同じカテゴリーのデータを合算する
+            const aggregatedData = {};
+            targetList.forEach(item => {
+                if (!aggregatedData[item.categoryId]) {
+                    aggregatedData[item.categoryId] = {
+                        categoryId: item.categoryId,
+                        categoryName: item.categoryName,
+                        count: 0
+                    };
+                }
+                aggregatedData[item.categoryId].count += item.count;
+            });
+
+            // 3. 合算したデータを配列に変換し、元の条件でソート
+            const sortedList = Object.values(aggregatedData).sort((a, b) => {
                 const countA = counts[a.categoryId] || 0;
                 const countB = counts[b.categoryId] || 0;
                 if (countB !== countA) return countB - countA;
                 return masterOrder[a.categoryId] - masterOrder[b.categoryId];
             });
 
+            // 4. CSVデータとして出力（合算済みの結果を出力）
             sortedList.forEach(item => {
                 const itemInfo = categoryMaster.find(c => c.id === item.categoryId);
                 const csvName = itemInfo ? itemInfo.csvName : item.categoryName;
