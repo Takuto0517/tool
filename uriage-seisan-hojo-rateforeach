@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>売上精算書集計補助</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 10px; background-color: #f1f5f9; color: #1e293b; font-size: 15px; }
+        .container { max-width: 650px; margin: 0 auto; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        h1 { text-align: center; font-size: 19px; color: #0f172a; margin: 5px 0 15px 0; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px; }
+        
+        /* 🏷️ 上部ステップボタンのスタイル */
+        .step-btn { padding: 8px 2px; font-size: 14px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+        .step-btn.btn-empty { background: #e2e8f0; color: #64748b; } 
+        .step-btn.btn-filled { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; } 
+        .step-btn.btn-active { background: #2563eb; color: white; box-shadow: 0 0 0 2px #93c5fd; } 
+
+        /* 🏷️ 現在の入力項目ヘッダー */
+        .current-dept-card { background: #334155; color: white; padding: 14px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
+        .current-dept-name { font-size: 24px; font-weight: bold; letter-spacing: 0.5px; }
+
+        /* ⚙️ 掛金率設定 */
+        .config-card { background: #fffbeb; border: 2px solid #fef3c7; border-radius: 8px; padding: 12px; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; }
+        .config-title { font-weight: bold; color: #b45309; font-size: 16px; }
+        .fee-input-group { display: flex; align-items: center; gap: 5px; }
+        .fee-input { width: 80px; height: 38px; font-size: 18px; font-weight: bold; text-align: center; border: 2px solid #d97706; border-radius: 6px; }
+
+        /* 🔍 金種フィルターセクション */
+        .filter-card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 15px; padding: 8px 12px; }
+        .filter-toggle { font-size: 13px; font-weight: bold; color: #2563eb; cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none; }
+        .filter-options { display: none; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px dashed #cbd5e1; }
+        @media (max-width: 480px) { .filter-options { grid-template-columns: repeat(3, 1fr); } }
+        .filter-item { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: bold; color: #475569; cursor: pointer; }
+        .filter-item input { transform: scale(1.1); cursor: pointer; }
+        
+        /* 🔢 金種入力テーブル */
+        .money-table { width: 100%; border-collapse: collapse; background: white; margin-bottom: 15px; margin-top: 5px; }
+        .money-table th { background: #475569; color: white; padding: 8px; font-size: 12px; }
+        .money-table td { border: 1px solid #e2e8f0; padding: 8px 4px; vertical-align: middle; }
+        .money-table tr.hidden-denom { display: none !important; }
+        .denom-label { font-weight: bold; font-size: 16px; color: #334155; text-align: center; }
+        
+        /* ⌨️ 手入力フォーム */
+        .count-input { width: 90%; max-width: 110px; height: 38px; text-align: center; font-size: 18px; font-weight: bold; border: 2px solid #cbd5e1; border-radius: 6px; padding: 4px; background-color: #fff; display: block; margin: 0 auto; }
+        .count-input:focus { border-color: #2563eb; background-color: #eff6ff; outline: none; }
+        
+        /* 金額と合算値表示 */
+        .amount-area { text-align: right; padding-right: 8px; }
+        .amount-disp { font-size: 14px; font-weight: bold; color: #0f172a; display: block; }
+        .cum-sheets-disp { font-size: 11px; color: #64748b; font-weight: bold; display: block; margin-top: 2px; }
+
+        /* 🚀 ボタン基本スタイル */
+        .btn-block { width: 100%; padding: 14px; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; text-align: center; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
+
+        /* 📋 集計エリア */
+        .summary-box { background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 12px; padding: 15px; margin-top: 25px; }
+        .summary-title { text-align: center; font-size: 18px; font-weight: bold; color: #0f172a; margin-top: 0; margin-bottom: 15px; padding-bottom: 8px; border-bottom: 2px solid #cbd5e1; }
+        
+        /* 📱 iPhone用オプションチェックボックスの最適化 */
+        .option-container { background: #f1f5f9; padding: 12px; border-radius: 8px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .option-label { display: flex; align-items: center; gap: 10px; font-weight: bold; color: #334155; font-size: 14px; cursor: pointer; user-select: none; padding: 4px 0; }
+        .option-label input[type="checkbox"], .option-label input[type="radio"] { transform: scale(1.3); width: 18px; height: 18px; cursor: pointer; }
+
+        .radio-group { display: flex; flex-wrap: wrap; gap: 15px; background: #fff; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-top: 2px; }
+
+        /* 📊 テーブル上部ヘッダー（追加配置用） */
+        .report-header-area { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 6px; }
+        .report-section-title { font-weight: bold; color: #1e3a8a; font-size: 15px; margin: 0; }
+
+        .report-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 15px; background: white; }
+        .report-table th { background: #1e293b; color: white; padding: 10px 4px; text-align: center; font-size: 12px; vertical-align: middle; }
+        .report-table td { padding: 8px 4px; border: 1px solid #e2e8f0; text-align: right; vertical-align: middle; }
+        .report-table td.text-left { text-align: center; font-weight: bold; background: #f8fafc; font-size: 14px; }
+        .row-total { background: #f0fdf4; font-weight: bold; }
+        .row-total td { color: #166534; font-weight: bold; }
+
+        /* ⚙️ 修正ボタン */
+        .btn-edit { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; border-radius: 4px; padding: 4px 8px; font-size: 11px; font-weight: bold; cursor: pointer; }
+        .btn-edit:hover { background: #bae6fd; }
+
+        .text-center { text-align: center !important; }
+        .text-bold { font-weight: bold; }
+
+        /* 📄 PDFプレビュー用モーダル */
+        #pdfModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto; padding: 20px 10px; }
+        .pdf-modal-content { background: white; max-width: 420px; margin: 0 auto; padding: 20px; border-radius: 8px; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.3); font-family: "Hiragino Kaku Gothic ProN", "Helvetica Neue", sans-serif; color: #000; }
+        .pdf-close-btn { width: 100%; background: #64748b; color: white; padding: 12px; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        
+        /* 🖨️ A5サイズ（縦）風の明細フォーマットスタイル */
+        .receipt-box { border: 1px solid #000; padding: 15px; background: #fff; line-height: 1.4; font-size: 12px; }
+        .receipt-title { text-align: center; font-size: 18px; font-weight: bold; letter-spacing: 2px; margin: 0 0 15px 0; padding-bottom: 5px; border-bottom: 2px double #000; }
+        .receipt-meta { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 15px; }
+        .receipt-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 12px; }
+        .receipt-table th, .receipt-table td { border: 1px solid #000; padding: 6px 4px; }
+        .receipt-table th { background: #f2f2f2; font-weight: bold; text-align: center; }
+        .receipt-table td { text-align: right; }
+        .receipt-table td.center { text-align: center; }
+        .receipt-table .bg-total { background: #f9f9f9; font-weight: bold; }
+        
+        /* 印刷時専用のスタイル */
+        @media print {
+            body * { visibility: hidden; }
+            #pdfModal, #pdfModal * { visibility: visible; }
+            #pdfModal { position: absolute; left: 0; top: 0; width: 100%; background: white; padding: 0; margin: 0; }
+            .pdf-modal-content { box-shadow: none; padding: 0; margin: 0; max-width: 100%; }
+            .no-print { display: none !important; }
+            @page { size: A5 portrait; margin: 10mm; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>売上精算書集計補助</h1>
+
+    <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; margin-bottom: 15px;">
+        <button id="stepNav-0" onclick="jumpToDept(0)" class="step-btn btn-empty">①</button>
+        <button id="stepNav-1" onclick="jumpToDept(1)" class="step-btn btn-empty">②</button>
+        <button id="stepNav-2" onclick="jumpToDept(2)" class="step-btn btn-empty">③</button>
+        <button id="stepNav-3" onclick="jumpToDept(3)" class="step-btn btn-empty">④</button>
+        <button id="stepNav-4" onclick="jumpToDept(4)" class="step-btn btn-empty">⑤</button>
+        <button id="stepNav-5" onclick="jumpToDept(5)" class="step-btn btn-empty">⑥</button>
+    </div>
+
+    <div class="current-dept-card">
+        <div class="current-dept-name" id="currentDeptName">現在入力中の項目：①</div>
+    </div>
+
+    <div class="config-card">
+        <div class="config-title">⚙️ この項目の掛金率</div>
+        <div class="fee-input-group">
+            <input type="text" inputmode="decimal" id="feeRate" class="fee-input" value="75" oninput="onInputFeeRate()" onclick="this.select()">
+            <span style="font-weight: bold; color: #b45309; font-size: 18px;">%</span>
+        </div>
+    </div>
+
+    <div class="filter-card">
+        <div class="filter-toggle" onclick="toggleFilterOptions()">
+            <span>🔍 表示する金種を選択（クリックで展開）</span>
+            <span id="filterArrow">▼</span>
+        </div>
+        <div class="filter-options" id="filterOptions"></div>
+    </div>
+    
+    <table class="money-table">
+        <thead>
+            <tr>
+                <th style="width: 25%;">金種</th>
+                <th style="width: 35%;">枚数入力</th>
+                <th style="width: 40%;">現在の金額 / (累計)</th>
+            </tr>
+        </thead>
+        <tbody id="denomTable"></tbody>
+    </table>
+
+    <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+        <button class="btn-block" id="prevStepBtn" style="width: 50%; background:#64748b; color:white; font-size:15px; margin-bottom:0; padding: 12px; display: none;" onclick="goToPrevStep()">⬅ 前の項目へ</button>
+        <button class="btn-block" id="nextStepBtn" style="width: 100%; background:#2563eb; color:white; font-size:15px; margin-bottom:0; padding: 12px;" onclick="goToNextStep()">次の項目へ（②）➔</button>
+    </div>
+    
+    <button class="btn-block" id="finalizeBtn" style="background: #10b981; color: white; background-image: linear-gradient(to bottom, #10b981, #059669);" onclick="scrollToSummary()">➔ 入力を完了して確定</button>
+
+    <div id="pdfActionArea" style="display: none; margin-top: 5px; margin-bottom: 15px;">
+        <button class="btn-block" style="background: #ff9800; color: white; background-image: linear-gradient(to bottom, #ffb74d, #f57c00); font-size: 17px; padding: 15px;" onclick="openPdfModal()">📄 PDFデータで確認する</button>
+    </div>
+
+    <div class="summary-box" id="summaryBox">
+        <div class="summary-title" id="summaryBoxTitle">📊 集計合算（入力中リアルタイム）</div>
+        
+        <div class="option-container">
+            <label class="option-label" id="decimalLabel">
+                <input type="checkbox" id="showDecimalChk" onchange="onChangeDecimalOpt()">
+                <span>小数点以下を表示</span>
+            </label>
+            
+            <div>
+                <span style="font-size: 13px; font-weight: bold; color: #475569; display: block; margin-bottom: 4px;">持帰金の端数処理:</span>
+                <div class="radio-group">
+                    <label class="option-label" style="padding:0;">
+                        <input type="radio" name="roundOpt" id="roundCeil" value="ceil" onchange="onChangeRoundOpt()">
+                        <span>切り上げ</span>
+                    </label>
+                    <label class="option-label" style="padding:0;">
+                        <input type="radio" name="roundOpt" id="roundRound" value="round" onchange="onChangeRoundOpt()">
+                        <span>四捨五入</span>
+                    </label>
+                    <label class="option-label" style="padding:0;">
+                        <input type="radio" name="roundOpt" id="roundFloor" value="floor" onchange="onChangeRoundOpt()">
+                        <span>切り捨て</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="report-header-area">
+            <h3 class="report-section-title">■ 項目別 集計一覧</h3>
+        </div>
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th style="text-align: center; width: 12%;">項目</th>
+                    <th style="text-align: center; width: 13%;">掛金率</th>
+                    <th style="width: 22%;">売上高</th>
+                    <th style="width: 21%;">手数料</th>
+                    <th style="width: 22%;">持帰金</th>
+                    <th style="text-align: center; width: 10%;">操作</th>
+                </tr>
+            </thead>
+            <tbody id="reportDeptRows"></tbody>
+        </table>
+
+        <div style="font-weight: bold; color: #1e3a8a; margin-bottom: 6px; margin-top: 15px;">■ 金種別 合計枚数・金額（全項目の合算）</div>
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th>金種</th>
+                    <th style="width: 35%; text-align: center;">合計枚数</th>
+                    <th style="width: 40%; text-align: right;">合計金額</th>
+                </tr>
+            </thead>
+            <tbody id="reportDenomRows"></tbody>
+        </table>
+
+        <button class="btn-block" style="background:#ec4899; color:white; margin-top:15px; margin-bottom:0; padding:10px; font-size:14px;" onclick="resetAllData()">🔄 データを全て消去して最初からやり直す</button>
+    </div>
+</div>
+
+<div id="pdfModal">
+    <div class="pdf-modal-content">
+        <div class="receipt-box" id="receiptPrintArea">
+            <h2 class="receipt-title">売上精算明細書</h2>
+            <div class="receipt-meta">
+                <div>出力日時: <span id="receiptDate">----/--/-- --:--</span></div>
+            </div>
+            
+            <table class="receipt-table">
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">項目</th>
+                        <th style="width: 15%;">掛率</th>
+                        <th style="width: 25%;">売上高</th>
+                        <th style="width: 20%;">手数料</th>
+                        <th style="width: 25%;">持帰金</th>
+                    </tr>
+                </thead>
+                <tbody id="receiptDeptRows"></tbody>
+            </table>
+            
+            <div style="font-weight: bold; margin-bottom: 5px; font-size: 11px;">【金種別 合算内訳】</div>
+            <table class="receipt-table" style="margin-bottom: 5px;">
+                <thead>
+                    <tr>
+                        <th>金種</th>
+                        <th style="width: 30%;">合計枚数</th>
+                        <th style="width: 40%;">合計金額</th>
+                    </tr>
+                </thead>
+                <tbody id="receiptDenomRows"></tbody>
+            </table>
+        </div>
+        
+        <button class="pdf-close-btn no-print" onclick="closePdfModal()">閉じる</button>
+    </div>
+</div>
+
+<script>
+    const departments = [
+        { id: 1, name: "①", label: "①" },
+        { id: 2, name: "②", label: "②" },
+        { id: 3, name: "③", label: "③" },
+        { id: 4, name: "④", label: "④" },
+        { id: 5, name: "⑤", label: "⑤" },
+        { id: 6, name: "⑥", label: "⑥" }
+    ];
+
+    const denoms = [
+        { value: 10000, label: "10,000円" },
+        { value: 5000,  label: "5,000円" },
+        { value: 2000,  label: "2,000円" },
+        { value: 1000,  label: "1,000円" },
+        { value: 500,   label: "500円" },
+        { value: 100,   label: "100円" },
+        { value: 50,    label: "50円" },
+        { value: 10,    label: "10円" },
+        { value: 5,     label: "5円" },
+        { value: 1,     label: "1円" },
+        { value: 100000, label: "その他" }
+    ];
+
+    let currentDeptIndex = 0;
+    let deptData = {};
+    let visibleDenoms = {};
+    let isFinalized = false; 
+    let showDecimal = false;
+    let roundMode = "ceil"; 
+
+    function initDataStructure() {
+        departments.forEach(dept => {
+            if (!deptData[dept.id]) {
+                deptData[dept.id] = { counts: {}, feeRate: 75 };
+                denoms.forEach(d => { deptData[dept.id].counts[d.value] = 0; });
+            } else {
+                // 既存のデータに feeRate が無い場合の初期化
+                if (typeof deptData[dept.id].feeRate === 'undefined') {
+                    deptData[dept.id].feeRate = 75;
+                }
+            }
+        });
+        if (Object.keys(visibleDenoms).length === 0) {
+            denoms.forEach(d => { visibleDenoms[d.value] = true; });
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        const savedData = localStorage.getItem('seisan_multidept_data');
+        if (savedData) deptData = JSON.parse(savedData);
+
+        const savedFilter = localStorage.getItem('seisan_visible_denoms');
+        if (savedFilter) visibleDenoms = JSON.parse(savedFilter);
+
+        const savedShowDecimal = localStorage.getItem('seisan_opt_decimal');
+        if (savedShowDecimal) {
+            showDecimal = savedShowDecimal === 'true';
+            document.getElementById('showDecimalChk').checked = showDecimal;
+        }
+
+        const savedRoundMode = localStorage.getItem('seisan_opt_roundmode');
+        if (savedRoundMode) {
+            roundMode = savedRoundMode;
+        }
+
+        if (roundMode === "ceil") document.getElementById('roundCeil').checked = true;
+        if (roundMode === "round") document.getElementById('roundRound').checked = true;
+        if (roundMode === "floor") document.getElementById('roundFloor').checked = true;
+
+        initDataStructure();
+        renderFilterOptions();
+        renderDenomRows();
+        loadCurrentDeptToUI();
+        updateLiveReports();
+    });
+
+    function renderFilterOptions() {
+        const container = document.getElementById('filterOptions');
+        container.innerHTML = "";
+        denoms.forEach(d => {
+            const isChecked = visibleDenoms[d.value] ? "checked" : "";
+            const html = `
+                <label class="filter-item">
+                    <input type="checkbox" id="filter-chk-${d.value}" ${isChecked} onchange="onToggleDenomFilter(${d.value})">
+                    <span>${d.label.replace('円','')}</span>
+                </label>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+        });
+    }
+
+    function toggleFilterOptions() {
+        const opts = document.getElementById('filterOptions');
+        const arrow = document.getElementById('filterArrow');
+        if (opts.style.display === 'grid') {
+            opts.style.display = 'none';
+            arrow.innerText = '▼';
+        } else {
+            opts.style.display = 'grid';
+            arrow.innerText = '▲';
+        }
+    }
+
+    function onToggleDenomFilter(value) {
+        const chk = document.getElementById(`filter-chk-${value}`);
+        visibleDenoms[value] = chk.checked;
+        localStorage.setItem('seisan_visible_denoms', JSON.stringify(visibleDenoms));
+        
+        const row = document.getElementById(`denom-row-${value}`);
+        if (chk.checked) row.classList.remove('hidden-denom');
+        else row.classList.add('hidden-denom');
+        updateLiveReports();
+    }
+
+    function renderDenomRows() {
+        const tbody = document.getElementById('denomTable');
+        tbody.innerHTML = "";
+        denoms.forEach(d => {
+            const isHidden = visibleDenoms[d.value] ? "" : "class=\"hidden-denom\"";
+            const row = `
+                <tr id="denom-row-${d.value}" ${isHidden}>
+                    <td class="denom-label">${d.label}</td>
+                    <td>
+                        <input type="text" inputmode="numeric" id="count-${d.value}" class="count-input" value="" placeholder="0" oninput="onInputCount(${d.value})" onclick="this.select()">
+                    </td>
+                    <td class="amount-area">
+                        <span class="amount-disp" id="amount-${d.value}">¥0</span>
+                        <span class="cum-sheets-disp" id="cum-sheets-${d.value}">(累計: 0枚)</span>
+                    </td>
+                </tr>
+            `;
+            tbody.insertAdjacentHTML('beforeend', row);
+        });
+    }
+
+    function onInputCount(value) {
+        hidePdfButton();
+
+        const input = document.getElementById(`count-${value}`);
+        let val = input.value.replace(/[０-９]/g, function(s) {
+            return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+        }).replace(/[^0-9]/g, '');
+        
+        input.value = val;
+        const count = parseInt(val, 10) || 0;
+        
+        let amt = count * value;
+        if (value === 100000) amt = count;
+        
+        document.getElementById(`amount-${value}`).innerText = "¥" + amt.toLocaleString();
+        
+        const currentDeptId = departments[currentDeptIndex].id;
+        deptData[currentDeptId].counts[value] = count;
+        localStorage.setItem('seisan_multidept_data', JSON.stringify(deptData));
+
+        updateLiveReports();
+    }
+
+    function onInputFeeRate() {
+        hidePdfButton();
+        const input = document.getElementById('feeRate');
+        let val = input.value.replace(/[０-９]/g, function(s) {
+            return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+        }).replace(/[^0-9.]/g, '');
+        
+        input.value = val;
+        let rate = parseFloat(val) || 0;
+        
+        const currentDeptId = departments[currentDeptIndex].id;
+        deptData[currentDeptId].feeRate = rate;
+        localStorage.setItem('seisan_multidept_data', JSON.stringify(deptData));
+        
+        updateLiveReports();
+    }
+
+    function onChangeDecimalOpt() {
+        showDecimal = document.getElementById('showDecimalChk').checked;
+        localStorage.setItem('seisan_opt_decimal', showDecimal);
+        updateLiveReports();
+    }
+
+    function onChangeRoundOpt() {
+        const radios = document.getElementsByName('roundOpt');
+        let selected = "ceil"; 
+        for (let r of radios) {
+            if (r.checked) {
+                selected = r.value;
+                break;
+            }
+        }
+        
+        roundMode = selected;
+        localStorage.setItem('seisan_opt_roundmode', roundMode);
+        updateLiveReports();
+    }
+
+    function formatMoney(num) {
+        if (showDecimal) {
+            return num.toLocaleString('ja-JP', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        } else {
+            return Math.round(num).toLocaleString();
+        }
+    }
+
+    function updateCumulativeLabels() {
+        denoms.forEach(d => {
+            let totalSheets = 0;
+            departments.forEach(dept => {
+                const data = deptData[dept.id];
+                if (data && data.counts) {
+                    totalSheets += (data.counts[d.value] || 0);
+                }
+            });
+            const labelEl = document.getElementById(`cum-sheets-${d.value}`);
+            if (labelEl) {
+                if (d.value === 100000) {
+                    labelEl.innerText = `(累計: ¥${totalSheets.toLocaleString()})`;
+                } else {
+                    labelEl.innerText = `(累計: ${totalSheets}枚)`;
+                }
+            }
+        });
+    }
+
+    // 現在の入力画面（項目）に数値が入力されているか判定する共通関数
+    function checkCurrentDeptInput() {
+        const currentDeptId = departments[currentDeptIndex].id;
+        const currentData = deptData[currentDeptId];
+        let hasInput = false;
+        if (currentData && currentData.counts) {
+            hasInput = Object.values(currentData.counts).some(count => count > 0);
+        }
+        return hasInput;
+    }
+
+    function updateLiveReports() {
+        const deptRowsTbody = document.getElementById('reportDeptRows');
+        if (!deptRowsTbody) return;
+        deptRowsTbody.innerHTML = "";
+
+        const titleEl = document.getElementById('summaryBoxTitle');
+        if (titleEl) {
+            if (isFinalized) {
+                titleEl.innerText = "📊 集計合算（確定結果）";
+            } else {
+                titleEl.innerText = "📊 集計合算（入力中リアルタイム）";
+            }
+        }
+
+        let grandTotalSales = 0;
+        let grandTotalFee = 0;
+        let grandTotalTakehome = 0;
+
+        let totalDenomCounts = {};
+        denoms.forEach(d => { totalDenomCounts[d.value] = 0; });
+
+        departments.forEach((dept, idx) => {
+            const data = deptData[dept.id];
+            const deptFeeRate = data.feeRate || 0;
+            let deptSales = 0;
+
+            denoms.forEach(d => {
+                const count = data.counts[d.value] || 0;
+                let amt = count * d.value;
+                if (d.value === 100000) amt = count;
+                deptSales += amt;
+                totalDenomCounts[d.value] += count;
+            });
+
+            let takehomeRaw = deptSales * (deptFeeRate / 100);
+            let takehome = takehomeRaw;
+            let fee = deptSales - takehome; 
+
+            if (!showDecimal) {
+                if (roundMode === "ceil") {
+                    takehome = Math.ceil(takehomeRaw);
+                    fee = deptSales - takehome;
+                } else if (roundMode === "floor") {
+                    takehome = Math.floor(takehomeRaw);
+                    fee = deptSales - takehome;
+                } else {
+                    takehome = Math.round(takehomeRaw);
+                    fee = deptSales - takehome;
+                }
+            }
+
+            if (deptSales > 0) {
+                grandTotalSales += deptSales;
+                grandTotalFee += fee;
+                grandTotalTakehome += takehome;
+            }
+
+            if (deptSales > 0) {
+                const showAction = isFinalized ? 
+                    `<button class="btn-edit" onclick="jumpToDept(${idx})">⚙️ 修正</button>` : `-`;
+                
+                const row = `
+                    <tr>
+                        <td class="text-left">${dept.label}</td>
+                        <td class="text-center">${deptFeeRate}%</td>
+                        <td>¥${formatMoney(deptSales)}</td>
+                        <td>¥${formatMoney(fee)}</td>
+                        <td style="font-weight:bold; background:#faf5ff;">¥${formatMoney(takehome)}</td>
+                        <td class="text-center" style="${!isFinalized ? 'color: #cbd5e1; font-size:11px;' : ''}">
+                            ${showAction}
+                        </td>
+                    </tr>
+                `;
+                deptRowsTbody.insertAdjacentHTML('beforeend', row);
+            } else if (!isFinalized) {
+                const row = `
+                    <tr>
+                        <td class="text-left">${dept.label}</td>
+                        <td class="text-center">${deptFeeRate}%</td>
+                        <td>¥${formatMoney(0)}</td>
+                        <td>¥${formatMoney(0)}</td>
+                        <td style="font-weight:bold; background:#faf5ff;">¥${formatMoney(0)}</td>
+                        <td class="text-center" style="color: #cbd5e1; font-size:11px;">-</td>
+                    </tr>
+                `;
+                deptRowsTbody.insertAdjacentHTML('beforeend', row);
+            }
+        });
+
+        if (grandTotalSales === 0) {
+            deptRowsTbody.innerHTML = `<tr><td colspan="6" class="text-center" style="color:#94a3b8; padding:15px;">※入力された項目がありません</td></tr>`;
+        }
+
+        const totalRow = `
+            <tr class="row-total">
+                <td class="text-left text-center" colspan="2">合計</td>
+                <td>¥${formatMoney(grandTotalSales)}</td>
+                <td>¥${formatMoney(grandTotalFee)}</td>
+                <td style="background:#dcfce7;">¥${formatMoney(grandTotalTakehome)}</td>
+                <td></td>
+            </tr>
+        `;
+        deptRowsTbody.insertAdjacentHTML('beforeend', totalRow);
+
+        const denomRowsTbody = document.getElementById('reportDenomRows');
+        if (!denomRowsTbody) return;
+        denomRowsTbody.innerHTML = "";
+
+        let hasAnyDenom = false;
+        denoms.forEach(d => {
+            const totalSheets = totalDenomCounts[d.value];
+            if (totalSheets > 0) { 
+                hasAnyDenom = true;
+                let totalAmt = totalSheets * d.value;
+                if (d.value === 100000) totalAmt = totalSheets;
+                const displaySheetsStr = d.value === 100000 ? "-" : `${totalSheets} 枚`;
+
+                const dRow = `
+                    <tr>
+                        <td class="text-left" style="text-align:center;">${d.label}</td>
+                        <td class="text-center text-bold">${displaySheetsStr}</td>
+                        <td class="text-bold">¥${totalAmt.toLocaleString()}</td>
+                    </tr>
+                `;
+                denomRowsTbody.insertAdjacentHTML('beforeend', dRow);
+            }
+        });
+
+        if (!hasAnyDenom) {
+            denomRowsTbody.innerHTML = `<tr><td colspan="3" class="text-center" style="color:#94a3b8; padding:15px;">※枚数の入力がありません</td></tr>`;
+        }
+
+        updateCumulativeLabels();
+        updateNavigationColors();
+    }
+
+    function updateNavigationColors() {
+        departments.forEach((dept, idx) => {
+            const btn = document.getElementById('stepNav-' + idx);
+            if (!btn) return;
+
+            btn.className = "step-btn";
+            if (idx === currentDeptIndex) {
+                btn.classList.add("btn-active");
+                return;
+            }
+
+            const data = deptData[dept.id];
+            let hasInput = false;
+            if (data && data.counts) {
+                hasInput = Object.values(data.counts).some(count => count > 0);
+            }
+
+            if (hasInput) btn.classList.add("btn-filled");
+            else btn.classList.add("btn-empty");
+        });
+    }
+
+    function loadCurrentDeptToUI() {
+        const currentDept = departments[currentDeptIndex];
+        const currentData = deptData[currentDept.id];
+
+        document.getElementById('currentDeptName').innerText = `現在入力中の項目：${currentDept.name}`;
+        document.getElementById('feeRate').value = currentData.feeRate;
+
+        denoms.forEach(d => {
+            const count = currentData.counts[d.value] || 0;
+            document.getElementById(`count-${d.value}`).value = count === 0 ? "" : count;
+            
+            let amt = count * d.value;
+            if (d.value === 100000) amt = count;
+            document.getElementById(`amount-${d.value}`).innerText = "¥" + amt.toLocaleString();
+        });
+        
+        // 🔄 ナビゲーションボタンの動的制御
+        const prevStepBtn = document.getElementById('prevStepBtn');
+        const nextStepBtn = document.getElementById('nextStepBtn');
+
+        if (currentDeptIndex === 0) {
+            // ①の時は前の項目に戻るボタンを非表示にし、進むボタンを横幅100%にする
+            prevStepBtn.style.display = 'none';
+            nextStepBtn.style.width = '100%';
+        } else {
+            // ②〜⑥の時は戻るボタンを表示し、均等に50%ずつ配置する
+            prevStepBtn.style.display = 'block';
+            prevStepBtn.style.width = '50%';
+            nextStepBtn.style.width = '50%';
+            
+            const prevDept = departments[currentDeptIndex - 1];
+            prevStepBtn.innerText = `⬅ 前の項目へ（${prevDept.name}）`;
+        }
+
+        // 次に進むボタンのテキスト制御
+        if (currentDeptIndex === departments.length - 1) {
+            nextStepBtn.innerText = `最初の項目へ（${departments[0].name}）🔄`;
+        } else {
+            const nextDept = departments[currentDeptIndex + 1];
+            nextStepBtn.innerText = `次の項目へ（${nextDept.name}）➔`;
+        }
+    }
+
+    function jumpToDept(index) {
+        if (currentDeptIndex === index) return;
+
+        // 現在の項目に入力があるかチェック
+        if (!checkCurrentDeptInput()) {
+            const currentDept = departments[currentDeptIndex];
+            alert(`現在の項目（${currentDept.name}）の金種（枚数）が入力されていません。他の項目へ移る前に数値を入力してください。`);
+            return;
+        }
+
+        currentDeptIndex = index;
+        loadCurrentDeptToUI();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function goToNextStep() {
+        // 現在の項目に入力があるかチェック
+        if (!checkCurrentDeptInput()) {
+            const currentDept = departments[currentDeptIndex];
+            alert(`現在の項目（${currentDept.name}）の金種（枚数）が入力されていません。次の項目へ進む前に数値を入力してください。`);
+            return;
+        }
+
+        if (currentDeptIndex === departments.length - 1) {
+            currentDeptIndex = 0;
+        } else {
+            currentDeptIndex++;
+        }
+        loadCurrentDeptToUI();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function goToPrevStep() {
+        if (currentDeptIndex === 0) return; // 安全策
+
+        // 現在の項目に入力があるかチェック
+        if (!checkCurrentDeptInput()) {
+            const currentDept = departments[currentDeptIndex];
+            alert(`現在の項目（${currentDept.name}）の金種（枚数）が入力されていません。前の項目へ戻る前に数値を入力してください。`);
+            return;
+        }
+
+        currentDeptIndex--;
+        loadCurrentDeptToUI();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function scrollToSummary() {
+        isFinalized = true;
+        updateLiveReports();
+        document.getElementById('pdfActionArea').style.display = 'block';
+        document.getElementById('summaryBox').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function hidePdfButton() {
+        isFinalized = false;
+        document.getElementById('pdfActionArea').style.display = 'none';
+        updateLiveReports();
+    }
+
+    function resetAllData() {
+        if (!confirm('全ての入力データ、設定をリセットして最初からやり直しますか？\n（※選択した金種の設定は保持されます）')) return;
+        
+        const backupFilter = localStorage.getItem('seisan_visible_denoms');
+        
+        localStorage.clear();
+        
+        if (backupFilter) {
+            localStorage.setItem('seisan_visible_denoms', backupFilter);
+            visibleDenoms = JSON.parse(backupFilter);
+        } else {
+            visibleDenoms = {};
+        }
+
+        deptData = {};
+        isFinalized = false;
+        showDecimal = false;
+        roundMode = "ceil"; 
+        
+        document.getElementById('showDecimalChk').checked = false;
+        document.getElementById('roundCeil').checked = true;
+        document.getElementById('roundRound').checked = false;
+        document.getElementById('roundFloor').checked = false;
+
+        currentDeptIndex = 0;
+        initDataStructure();
+        renderFilterOptions();
+        renderDenomRows();
+        loadCurrentDeptToUI();
+        updateLiveReports();
+        document.getElementById('pdfActionArea').style.display = 'none';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function openPdfModal() {
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        document.getElementById('receiptDate').innerText = dateStr;
+
+        const receiptDeptTbody = document.getElementById('receiptDeptRows');
+        receiptDeptTbody.innerHTML = "";
+        
+        let grandSales = 0, grandFee = 0, grandTakehome = 0;
+        let totalDenomCounts = {};
+        denoms.forEach(d => { totalDenomCounts[d.value] = 0; });
+
+        departments.forEach(dept => {
+            const data = deptData[dept.id];
+            const deptFeeRate = data.feeRate || 0;
+            let deptSales = 0;
+            denoms.forEach(d => {
+                const count = data.counts[d.value] || 0;
+                let amt = count * d.value;
+                if (d.value === 100000) amt = count;
+                deptSales += amt;
+                totalDenomCounts[d.value] += count;
+            });
+
+            if (deptSales > 0) {
+                let takehomeRaw = deptSales * (deptFeeRate / 100);
+                let takehome = takehomeRaw;
+                let fee = deptSales - takehome;
+
+                if (!showDecimal) {
+                    if (roundMode === "ceil") {
+                        takehome = Math.ceil(takehomeRaw);
+                        fee = deptSales - takehome;
+                    } else if (roundMode === "floor") {
+                        takehome = Math.floor(takehomeRaw);
+                        fee = deptSales - takehome;
+                    } else {
+                        takehome = Math.round(takehomeRaw);
+                        fee = deptSales - takehome;
+                    }
+                }
+
+                grandSales += deptSales;
+                grandFee += fee;
+                grandTakehome += takehome;
+
+                const row = `
+                    <tr>
+                        <td class="center" style="font-weight:bold;">${dept.label}</td>
+                        <td class="center">${deptFeeRate}%</td>
+                        <td>¥${formatMoney(deptSales)}</td>
+                        <td>¥${formatMoney(fee)}</td>
+                        <td style="font-weight:bold;">¥${formatMoney(takehome)}</td>
+                    </tr>
+                `;
+                receiptDeptTbody.insertAdjacentHTML('beforeend', row);
+            }
+        });
+
+        const totalRow = `
+            <tr class="bg-total">
+                <td class="center" colspan="2">合計</td>
+                <td>¥${formatMoney(grandSales)}</td>
+                <td>¥${formatMoney(grandFee)}</td>
+                <td>¥${formatMoney(grandTakehome)}</td>
+            </tr>
+        `;
+        receiptDeptTbody.insertAdjacentHTML('beforeend', totalRow);
+
+        const receiptDenomTbody = document.getElementById('receiptDenomRows');
+        receiptDenomTbody.innerHTML = "";
+        
+        denoms.forEach(d => {
+            const totalSheets = totalDenomCounts[d.value];
+            if (totalSheets > 0) {
+                let totalAmt = totalSheets * d.value;
+                if (d.value === 100000) totalAmt = totalSheets;
+                const sheetsStr = d.value === 100000 ? "-" : `${totalSheets} 枚`;
+                const row = `
+                    <tr>
+                        <td class="center">${d.label}</td>
+                        <td class="center">${sheetsStr}</td>
+                        <td>¥${totalAmt.toLocaleString()}</td>
+                    </tr>
+                `;
+                receiptDenomTbody.insertAdjacentHTML('beforeend', row);
+            }
+        });
+
+        document.getElementById('pdfModal').style.display = 'block';
+    }
+
+    function closePdfModal() {
+        document.getElementById('pdfModal').style.display = 'none';
+    }
+</script>
+
+</body>
+</html>
