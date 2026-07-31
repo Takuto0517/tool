@@ -21,8 +21,8 @@
         .current-dept-name { font-size: 24px; font-weight: bold; letter-spacing: 0.5px; }
 
         /* ⚙️ 掛金率設定 */
-        .config-card { background: #fffbeb; border: 2px solid #fef3c7; border-radius: 8px; padding: 12px; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; }
-        .config-title { font-weight: bold; color: #b45309; font-size: 16px; }
+        .config-card { background: #fffbeb; border: 2px solid #fef3c7; border-radius: 8px; padding: 12px; margin-bottom: 15px; display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
+        .config-title { font-weight: bold; color: #b45309; font-size: 17px; }
         .fee-input-group { display: flex; align-items: center; gap: 5px; }
         .fee-input { width: 80px; height: 38px; font-size: 18px; font-weight: bold; text-align: center; border: 2px solid #d97706; border-radius: 6px; }
 
@@ -67,6 +67,7 @@
         /* 📊 テーブル上部ヘッダー（追加配置用） */
         .report-header-area { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 6px; }
         .report-section-title { font-weight: bold; color: #1e3a8a; font-size: 15px; margin: 0; }
+        .top-rate-badge { background: #1e3a8a; color: white; font-weight: bold; font-size: 13px; padding: 3px 8px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
 
         .report-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 15px; background: white; }
         .report-table th { background: #1e293b; color: white; padding: 10px 4px; text-align: center; font-size: 12px; vertical-align: middle; }
@@ -128,10 +129,16 @@
     </div>
 
     <div class="config-card">
-        <div class="config-title">⚙️ この項目の掛金率</div>
-        <div class="fee-input-group">
-            <input type="text" inputmode="decimal" id="feeRate" class="fee-input" value="75" oninput="onInputFeeRate()" onclick="this.select()">
-            <span style="font-weight: bold; color: #b45309; font-size: 18px;">%</span>
+        <div style="display: flex; gap: 5px;">
+            <button id="btnRateGlobal" class="step-btn btn-active" style="flex:1; padding: 6px; font-size: 13px;" onclick="setRateMode(true)">全て統一</button>
+            <button id="btnRatePerItem" class="step-btn btn-empty" style="flex:1; padding: 6px; font-size: 13px;" onclick="setRateMode(false)">項目ごとに設定</button>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div class="config-title" id="feeRateTitle">⚙️ 掛金率 (全項目統一)</div>
+            <div class="fee-input-group">
+                <input type="text" inputmode="decimal" id="feeRate" class="fee-input" value="75" oninput="onInputFeeRate()" onclick="this.select()">
+                <span style="font-weight: bold; color: #b45309; font-size: 18px;">%</span>
+            </div>
         </div>
     </div>
 
@@ -195,15 +202,15 @@
 
         <div class="report-header-area">
             <h3 class="report-section-title">■ 項目別 集計一覧</h3>
+            <span class="top-rate-badge" id="topRateBadge">掛金率: 75%</span>
         </div>
         <table class="report-table">
             <thead>
                 <tr>
-                    <th style="text-align: center; width: 12%;">項目</th>
-                    <th style="text-align: center; width: 13%;">掛金率</th>
-                    <th style="width: 22%;">売上高</th>
-                    <th style="width: 21%;">手数料</th>
-                    <th style="width: 22%;">持帰金</th>
+                    <th style="text-align: center; width: 15%;">項目</th>
+                    <th style="width: 25%;">売上高</th>
+                    <th style="width: 25%;">手数料</th>
+                    <th style="width: 25%;">持帰金</th>
                     <th style="text-align: center; width: 10%;">操作</th>
                 </tr>
             </thead>
@@ -232,16 +239,16 @@
             <h2 class="receipt-title">売上精算明細書</h2>
             <div class="receipt-meta">
                 <div>出力日時: <span id="receiptDate">----/--/-- --:--</span></div>
+                <div>掛金率: <span id="receiptRate">--%</span></div>
             </div>
             
             <table class="receipt-table">
                 <thead>
                     <tr>
-                        <th style="width: 15%;">項目</th>
-                        <th style="width: 15%;">掛率</th>
-                        <th style="width: 25%;">売上高</th>
-                        <th style="width: 20%;">手数料</th>
-                        <th style="width: 25%;">持帰金</th>
+                        <th style="width: 20%;">項目</th>
+                        <th style="width: 28%;">売上高</th>
+                        <th style="width: 24%;">手数料</th>
+                        <th style="width: 28%;">持帰金</th>
                     </tr>
                 </thead>
                 <tbody id="receiptDeptRows"></tbody>
@@ -291,6 +298,9 @@
     let currentDeptIndex = 0;
     let deptData = {};
     let visibleDenoms = {};
+    let globalFeeRate = 75;
+    let lastUsedFeeRate = 75; // 入力した割合を保持するための変数
+    let isRateGlobal = true; 
     let isFinalized = false; 
     let showDecimal = false;
     let roundMode = "ceil"; 
@@ -298,13 +308,9 @@
     function initDataStructure() {
         departments.forEach(dept => {
             if (!deptData[dept.id]) {
-                deptData[dept.id] = { counts: {}, feeRate: 75 };
+                // feeRate は最初から設定せず、画面を開いた時にlastUsedFeeRateを引き継がせる
+                deptData[dept.id] = { counts: {} }; 
                 denoms.forEach(d => { deptData[dept.id].counts[d.value] = 0; });
-            } else {
-                // 既存のデータに feeRate が無い場合の初期化
-                if (typeof deptData[dept.id].feeRate === 'undefined') {
-                    deptData[dept.id].feeRate = 75;
-                }
             }
         });
         if (Object.keys(visibleDenoms).length === 0) {
@@ -318,6 +324,17 @@
 
         const savedFilter = localStorage.getItem('seisan_visible_denoms');
         if (savedFilter) visibleDenoms = JSON.parse(savedFilter);
+
+        const savedRate = localStorage.getItem('seisan_global_feerate');
+        if (savedRate) {
+            globalFeeRate = parseFloat(savedRate);
+            lastUsedFeeRate = globalFeeRate; // 読み込み時の初期基準値としてセット
+        }
+
+        const savedRateMode = localStorage.getItem('seisan_rate_mode');
+        if (savedRateMode !== null) {
+            isRateGlobal = savedRateMode === 'true';
+        }
 
         const savedShowDecimal = localStorage.getItem('seisan_opt_decimal');
         if (savedShowDecimal) {
@@ -335,11 +352,30 @@
         if (roundMode === "floor") document.getElementById('roundFloor').checked = true;
 
         initDataStructure();
+        setRateMode(isRateGlobal, true); 
         renderFilterOptions();
         renderDenomRows();
         loadCurrentDeptToUI();
         updateLiveReports();
     });
+
+    function setRateMode(isGlobal, isInit = false) {
+        isRateGlobal = isGlobal;
+        localStorage.setItem('seisan_rate_mode', isRateGlobal);
+        
+        if (isGlobal) {
+            document.getElementById('btnRateGlobal').className = "step-btn btn-active";
+            document.getElementById('btnRatePerItem').className = "step-btn btn-empty";
+        } else {
+            document.getElementById('btnRateGlobal').className = "step-btn btn-empty";
+            document.getElementById('btnRatePerItem').className = "step-btn btn-active";
+        }
+
+        if (!isInit) {
+            loadCurrentDeptToUI();
+            updateLiveReports();
+        }
+    }
 
     function renderFilterOptions() {
         const container = document.getElementById('filterOptions');
@@ -431,12 +467,18 @@
         }).replace(/[^0-9.]/g, '');
         
         input.value = val;
-        let rate = parseFloat(val) || 0;
         
-        const currentDeptId = departments[currentDeptIndex].id;
-        deptData[currentDeptId].feeRate = rate;
-        localStorage.setItem('seisan_multidept_data', JSON.stringify(deptData));
-        
+        const parsedRate = parseFloat(val) || 0;
+        if (isRateGlobal) {
+            globalFeeRate = parsedRate;
+            lastUsedFeeRate = parsedRate; // 統一モードで入れた値もベースとして保持
+            localStorage.setItem('seisan_global_feerate', globalFeeRate);
+        } else {
+            const currentDeptId = departments[currentDeptIndex].id;
+            deptData[currentDeptId].feeRate = parsedRate;
+            lastUsedFeeRate = parsedRate; // 個別モードで入力した割合を保持して引き継ぐ
+            localStorage.setItem('seisan_multidept_data', JSON.stringify(deptData));
+        }
         updateLiveReports();
     }
 
@@ -489,7 +531,6 @@
         });
     }
 
-    // 現在の入力画面（項目）に数値が入力されているか判定する共通関数
     function checkCurrentDeptInput() {
         const currentDeptId = departments[currentDeptIndex].id;
         const currentData = deptData[currentDeptId];
@@ -514,6 +555,11 @@
             }
         }
 
+        const topRateBadge = document.getElementById('topRateBadge');
+        if (topRateBadge) {
+            topRateBadge.innerText = isRateGlobal ? `掛金率: 統一 ${globalFeeRate}%` : `掛金率: 項目別に設定`;
+        }
+
         let grandTotalSales = 0;
         let grandTotalFee = 0;
         let grandTotalTakehome = 0;
@@ -523,8 +569,10 @@
 
         departments.forEach((dept, idx) => {
             const data = deptData[dept.id];
-            const deptFeeRate = data.feeRate || 0;
             let deptSales = 0;
+            
+            // 未設定の項目については最後に使った割合（lastUsedFeeRate）を仮適用する
+            let appliedRate = isRateGlobal ? globalFeeRate : (data.feeRate !== undefined ? data.feeRate : lastUsedFeeRate);
 
             denoms.forEach(d => {
                 const count = data.counts[d.value] || 0;
@@ -534,7 +582,7 @@
                 totalDenomCounts[d.value] += count;
             });
 
-            let takehomeRaw = deptSales * (deptFeeRate / 100);
+            let takehomeRaw = deptSales * (appliedRate / 100);
             let takehome = takehomeRaw;
             let fee = deptSales - takehome; 
 
@@ -561,10 +609,14 @@
                 const showAction = isFinalized ? 
                     `<button class="btn-edit" onclick="jumpToDept(${idx})">⚙️ 修正</button>` : `-`;
                 
+                let displayLabel = dept.label;
+                if (!isRateGlobal) {
+                    displayLabel += `<br><span style="font-size:10px; color:#64748b;">(${appliedRate}%)</span>`;
+                }
+
                 const row = `
                     <tr>
-                        <td class="text-left">${dept.label}</td>
-                        <td class="text-center">${deptFeeRate}%</td>
+                        <td class="text-left">${displayLabel}</td>
                         <td>¥${formatMoney(deptSales)}</td>
                         <td>¥${formatMoney(fee)}</td>
                         <td style="font-weight:bold; background:#faf5ff;">¥${formatMoney(takehome)}</td>
@@ -575,10 +627,14 @@
                 `;
                 deptRowsTbody.insertAdjacentHTML('beforeend', row);
             } else if (!isFinalized) {
+                let displayLabel = dept.label;
+                if (!isRateGlobal) {
+                    displayLabel += `<br><span style="font-size:10px; color:#cbd5e1;">(${appliedRate}%)</span>`;
+                }
+
                 const row = `
                     <tr>
-                        <td class="text-left">${dept.label}</td>
-                        <td class="text-center">${deptFeeRate}%</td>
+                        <td class="text-left">${displayLabel}</td>
                         <td>¥${formatMoney(0)}</td>
                         <td>¥${formatMoney(0)}</td>
                         <td style="font-weight:bold; background:#faf5ff;">¥${formatMoney(0)}</td>
@@ -590,12 +646,12 @@
         });
 
         if (grandTotalSales === 0) {
-            deptRowsTbody.innerHTML = `<tr><td colspan="6" class="text-center" style="color:#94a3b8; padding:15px;">※入力された項目がありません</td></tr>`;
+            deptRowsTbody.innerHTML = `<tr><td colspan="5" class="text-center" style="color:#94a3b8; padding:15px;">※入力された項目がありません</td></tr>`;
         }
 
         const totalRow = `
             <tr class="row-total">
-                <td class="text-left text-center" colspan="2">合計</td>
+                <td class="text-left text-center">合計</td>
                 <td>¥${formatMoney(grandTotalSales)}</td>
                 <td>¥${formatMoney(grandTotalFee)}</td>
                 <td style="background:#dcfce7;">¥${formatMoney(grandTotalTakehome)}</td>
@@ -663,7 +719,22 @@
         const currentData = deptData[currentDept.id];
 
         document.getElementById('currentDeptName').innerText = `現在入力中の項目：${currentDept.name}`;
-        document.getElementById('feeRate').value = currentData.feeRate;
+        
+        if (isRateGlobal) {
+            document.getElementById('feeRateTitle').innerText = "⚙️ 掛金率 (全項目統一)";
+            document.getElementById('feeRate').value = globalFeeRate;
+        } else {
+            document.getElementById('feeRateTitle').innerText = `⚙️ 掛金率 (項目ごと：${currentDept.name} )`;
+            // その項目がまだ未設定なら、直前で使っていた割合を引き継いでセットする
+            if (currentData.feeRate === undefined) {
+                currentData.feeRate = lastUsedFeeRate;
+                localStorage.setItem('seisan_multidept_data', JSON.stringify(deptData));
+            } else {
+                // 既に設定されている項目に戻ってきた場合は、その項目の割合を今後の基準値として更新する
+                lastUsedFeeRate = currentData.feeRate;
+            }
+            document.getElementById('feeRate').value = currentData.feeRate;
+        }
 
         denoms.forEach(d => {
             const count = currentData.counts[d.value] || 0;
@@ -674,16 +745,13 @@
             document.getElementById(`amount-${d.value}`).innerText = "¥" + amt.toLocaleString();
         });
         
-        // 🔄 ナビゲーションボタンの動的制御
         const prevStepBtn = document.getElementById('prevStepBtn');
         const nextStepBtn = document.getElementById('nextStepBtn');
 
         if (currentDeptIndex === 0) {
-            // ①の時は前の項目に戻るボタンを非表示にし、進むボタンを横幅100%にする
             prevStepBtn.style.display = 'none';
             nextStepBtn.style.width = '100%';
         } else {
-            // ②〜⑥の時は戻るボタンを表示し、均等に50%ずつ配置する
             prevStepBtn.style.display = 'block';
             prevStepBtn.style.width = '50%';
             nextStepBtn.style.width = '50%';
@@ -692,7 +760,6 @@
             prevStepBtn.innerText = `⬅ 前の項目へ（${prevDept.name}）`;
         }
 
-        // 次に進むボタンのテキスト制御
         if (currentDeptIndex === departments.length - 1) {
             nextStepBtn.innerText = `最初の項目へ（${departments[0].name}）🔄`;
         } else {
@@ -704,7 +771,6 @@
     function jumpToDept(index) {
         if (currentDeptIndex === index) return;
 
-        // 現在の項目に入力があるかチェック
         if (!checkCurrentDeptInput()) {
             const currentDept = departments[currentDeptIndex];
             alert(`現在の項目（${currentDept.name}）の金種（枚数）が入力されていません。他の項目へ移る前に数値を入力してください。`);
@@ -717,7 +783,6 @@
     }
 
     function goToNextStep() {
-        // 現在の項目に入力があるかチェック
         if (!checkCurrentDeptInput()) {
             const currentDept = departments[currentDeptIndex];
             alert(`現在の項目（${currentDept.name}）の金種（枚数）が入力されていません。次の項目へ進む前に数値を入力してください。`);
@@ -734,9 +799,8 @@
     }
 
     function goToPrevStep() {
-        if (currentDeptIndex === 0) return; // 安全策
+        if (currentDeptIndex === 0) return;
 
-        // 現在の項目に入力があるかチェック
         if (!checkCurrentDeptInput()) {
             const currentDept = departments[currentDeptIndex];
             alert(`現在の項目（${currentDept.name}）の金種（枚数）が入力されていません。前の項目へ戻る前に数値を入力してください。`);
@@ -762,7 +826,7 @@
     }
 
     function resetAllData() {
-        if (!confirm('全ての入力データ、設定をリセットして最初からやり直しますか？\n（※選択した金種の設定は保持されます）')) return;
+        if (!confirm('全ての入力データ、掛金率をリセットして最初からやり直しますか？\n（※選択した金種の設定は保持されます）')) return;
         
         const backupFilter = localStorage.getItem('seisan_visible_denoms');
         
@@ -776,6 +840,8 @@
         }
 
         deptData = {};
+        globalFeeRate = 75;
+        lastUsedFeeRate = 75; // リセット時も初期化
         isFinalized = false;
         showDecimal = false;
         roundMode = "ceil"; 
@@ -787,6 +853,7 @@
 
         currentDeptIndex = 0;
         initDataStructure();
+        setRateMode(true, true); 
         renderFilterOptions();
         renderDenomRows();
         loadCurrentDeptToUI();
@@ -799,6 +866,7 @@
         const now = new Date();
         const dateStr = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
         document.getElementById('receiptDate').innerText = dateStr;
+        document.getElementById('receiptRate').innerText = isRateGlobal ? `統一 ${globalFeeRate}%` : `項目別に設定`;
 
         const receiptDeptTbody = document.getElementById('receiptDeptRows');
         receiptDeptTbody.innerHTML = "";
@@ -809,8 +877,10 @@
 
         departments.forEach(dept => {
             const data = deptData[dept.id];
-            const deptFeeRate = data.feeRate || 0;
             let deptSales = 0;
+            
+            let appliedRate = isRateGlobal ? globalFeeRate : (data.feeRate !== undefined ? data.feeRate : lastUsedFeeRate);
+
             denoms.forEach(d => {
                 const count = data.counts[d.value] || 0;
                 let amt = count * d.value;
@@ -820,7 +890,7 @@
             });
 
             if (deptSales > 0) {
-                let takehomeRaw = deptSales * (deptFeeRate / 100);
+                let takehomeRaw = deptSales * (appliedRate / 100);
                 let takehome = takehomeRaw;
                 let fee = deptSales - takehome;
 
@@ -840,11 +910,15 @@
                 grandSales += deptSales;
                 grandFee += fee;
                 grandTakehome += takehome;
+                
+                let displayLabel = dept.label;
+                if (!isRateGlobal) {
+                    displayLabel += `<br><span style="font-size:9px;">(${appliedRate}%)</span>`;
+                }
 
                 const row = `
                     <tr>
-                        <td class="center" style="font-weight:bold;">${dept.label}</td>
-                        <td class="center">${deptFeeRate}%</td>
+                        <td class="center" style="font-weight:bold;">${displayLabel}</td>
                         <td>¥${formatMoney(deptSales)}</td>
                         <td>¥${formatMoney(fee)}</td>
                         <td style="font-weight:bold;">¥${formatMoney(takehome)}</td>
@@ -856,7 +930,7 @@
 
         const totalRow = `
             <tr class="bg-total">
-                <td class="center" colspan="2">合計</td>
+                <td class="center">合計</td>
                 <td>¥${formatMoney(grandSales)}</td>
                 <td>¥${formatMoney(grandFee)}</td>
                 <td>¥${formatMoney(grandTakehome)}</td>
