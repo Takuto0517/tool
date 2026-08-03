@@ -21,7 +21,7 @@
         .current-dept-name { font-size: 24px; font-weight: bold; letter-spacing: 0.5px; }
 
         /* ⚙️ 掛金率設定 */
-        .config-card { background: #fffbeb; border: 2px solid #fef3c7; border-radius: 8px; padding: 12px; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; }
+        .config-card { background: #fffbeb; border: 2px solid #fef3c7; border-radius: 8px; padding: 12px; margin-bottom: 15px; display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
         .config-title { font-weight: bold; color: #b45309; font-size: 17px; }
         .fee-input-group { display: flex; align-items: center; gap: 5px; }
         .fee-input { width: 80px; height: 38px; font-size: 18px; font-weight: bold; text-align: center; border: 2px solid #d97706; border-radius: 6px; }
@@ -129,10 +129,16 @@
     </div>
 
     <div class="config-card">
-        <div class="config-title">⚙️ 掛金率</div>
-        <div class="fee-input-group">
-            <input type="text" inputmode="decimal" id="feeRate" class="fee-input" value="75" oninput="onInputFeeRate()" onclick="this.select()">
-            <span style="font-weight: bold; color: #b45309; font-size: 18px;">%</span>
+        <div style="display: flex; gap: 5px;">
+            <button id="btnRateGlobal" class="step-btn btn-active" style="flex:1; padding: 6px; font-size: 13px;" onclick="setRateMode(true)">全て統一</button>
+            <button id="btnRatePerItem" class="step-btn btn-empty" style="flex:1; padding: 6px; font-size: 13px;" onclick="setRateMode(false)">項目ごとに設定</button>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div class="config-title" id="feeRateTitle">⚙️ 掛金率 (全項目統一)</div>
+            <div class="fee-input-group">
+                <input type="text" inputmode="decimal" id="feeRate" class="fee-input" value="75" oninput="onInputFeeRate()" onclick="this.select()">
+                <span style="font-weight: bold; color: #b45309; font-size: 18px;">%</span>
+            </div>
         </div>
     </div>
 
@@ -293,6 +299,8 @@
     let deptData = {};
     let visibleDenoms = {};
     let globalFeeRate = 75;
+    let lastUsedFeeRate = 75; // 入力した割合を保持するための変数
+    let isRateGlobal = true; 
     let isFinalized = false; 
     let showDecimal = false;
     let roundMode = "ceil"; 
@@ -300,7 +308,8 @@
     function initDataStructure() {
         departments.forEach(dept => {
             if (!deptData[dept.id]) {
-                deptData[dept.id] = { counts: {} };
+                // feeRate は最初から設定せず、画面を開いた時にlastUsedFeeRateを引き継がせる
+                deptData[dept.id] = { counts: {} }; 
                 denoms.forEach(d => { deptData[dept.id].counts[d.value] = 0; });
             }
         });
@@ -317,7 +326,15 @@
         if (savedFilter) visibleDenoms = JSON.parse(savedFilter);
 
         const savedRate = localStorage.getItem('seisan_global_feerate');
-        if (savedRate) globalFeeRate = parseFloat(savedRate);
+        if (savedRate) {
+            globalFeeRate = parseFloat(savedRate);
+            lastUsedFeeRate = globalFeeRate; // 読み込み時の初期基準値としてセット
+        }
+
+        const savedRateMode = localStorage.getItem('seisan_rate_mode');
+        if (savedRateMode !== null) {
+            isRateGlobal = savedRateMode === 'true';
+        }
 
         const savedShowDecimal = localStorage.getItem('seisan_opt_decimal');
         if (savedShowDecimal) {
@@ -335,11 +352,30 @@
         if (roundMode === "floor") document.getElementById('roundFloor').checked = true;
 
         initDataStructure();
+        setRateMode(isRateGlobal, true); 
         renderFilterOptions();
         renderDenomRows();
         loadCurrentDeptToUI();
         updateLiveReports();
     });
+
+    function setRateMode(isGlobal, isInit = false) {
+        isRateGlobal = isGlobal;
+        localStorage.setItem('seisan_rate_mode', isRateGlobal);
+        
+        if (isGlobal) {
+            document.getElementById('btnRateGlobal').className = "step-btn btn-active";
+            document.getElementById('btnRatePerItem').className = "step-btn btn-empty";
+        } else {
+            document.getElementById('btnRateGlobal').className = "step-btn btn-empty";
+            document.getElementById('btnRatePerItem').className = "step-btn btn-active";
+        }
+
+        if (!isInit) {
+            loadCurrentDeptToUI();
+            updateLiveReports();
+        }
+    }
 
     function renderFilterOptions() {
         const container = document.getElementById('filterOptions');
@@ -431,8 +467,18 @@
         }).replace(/[^0-9.]/g, '');
         
         input.value = val;
-        globalFeeRate = parseFloat(val) || 0;
-        localStorage.setItem('seisan_global_feerate', globalFeeRate);
+        
+        const parsedRate = parseFloat(val) || 0;
+        if (isRateGlobal) {
+            globalFeeRate = parsedRate;
+            lastUsedFeeRate = parsedRate; // 統一モードで入れた値もベースとして保持
+            localStorage.setItem('seisan_global_feerate', globalFeeRate);
+        } else {
+            const currentDeptId = departments[currentDeptIndex].id;
+            deptData[currentDeptId].feeRate = parsedRate;
+            lastUsedFeeRate = parsedRate; // 個別モードで入力した割合を保持して引き継ぐ
+            localStorage.setItem('seisan_multidept_data', JSON.stringify(deptData));
+        }
         updateLiveReports();
     }
 
@@ -485,7 +531,6 @@
         });
     }
 
-    // 現在の入力画面（項目）に数値が入力されているか判定する共通関数
     function checkCurrentDeptInput() {
         const currentDeptId = departments[currentDeptIndex].id;
         const currentData = deptData[currentDeptId];
@@ -512,7 +557,7 @@
 
         const topRateBadge = document.getElementById('topRateBadge');
         if (topRateBadge) {
-            topRateBadge.innerText = `掛金率: ${globalFeeRate}%`;
+            topRateBadge.innerText = isRateGlobal ? `掛金率: 統一 ${globalFeeRate}%` : `掛金率: 項目別に設定`;
         }
 
         let grandTotalSales = 0;
@@ -525,6 +570,9 @@
         departments.forEach((dept, idx) => {
             const data = deptData[dept.id];
             let deptSales = 0;
+            
+            // 未設定の項目については最後に使った割合（lastUsedFeeRate）を仮適用する
+            let appliedRate = isRateGlobal ? globalFeeRate : (data.feeRate !== undefined ? data.feeRate : lastUsedFeeRate);
 
             denoms.forEach(d => {
                 const count = data.counts[d.value] || 0;
@@ -534,7 +582,7 @@
                 totalDenomCounts[d.value] += count;
             });
 
-            let takehomeRaw = deptSales * (globalFeeRate / 100);
+            let takehomeRaw = deptSales * (appliedRate / 100);
             let takehome = takehomeRaw;
             let fee = deptSales - takehome; 
 
@@ -561,9 +609,14 @@
                 const showAction = isFinalized ? 
                     `<button class="btn-edit" onclick="jumpToDept(${idx})">⚙️ 修正</button>` : `-`;
                 
+                let displayLabel = dept.label;
+                if (!isRateGlobal) {
+                    displayLabel += `<br><span style="font-size:10px; color:#64748b;">(${appliedRate}%)</span>`;
+                }
+
                 const row = `
                     <tr>
-                        <td class="text-left">${dept.label}</td>
+                        <td class="text-left">${displayLabel}</td>
                         <td>¥${formatMoney(deptSales)}</td>
                         <td>¥${formatMoney(fee)}</td>
                         <td style="font-weight:bold; background:#faf5ff;">¥${formatMoney(takehome)}</td>
@@ -574,9 +627,14 @@
                 `;
                 deptRowsTbody.insertAdjacentHTML('beforeend', row);
             } else if (!isFinalized) {
+                let displayLabel = dept.label;
+                if (!isRateGlobal) {
+                    displayLabel += `<br><span style="font-size:10px; color:#cbd5e1;">(${appliedRate}%)</span>`;
+                }
+
                 const row = `
                     <tr>
-                        <td class="text-left">${dept.label}</td>
+                        <td class="text-left">${displayLabel}</td>
                         <td>¥${formatMoney(0)}</td>
                         <td>¥${formatMoney(0)}</td>
                         <td style="font-weight:bold; background:#faf5ff;">¥${formatMoney(0)}</td>
@@ -661,7 +719,22 @@
         const currentData = deptData[currentDept.id];
 
         document.getElementById('currentDeptName').innerText = `現在入力中の項目：${currentDept.name}`;
-        document.getElementById('feeRate').value = globalFeeRate;
+        
+        if (isRateGlobal) {
+            document.getElementById('feeRateTitle').innerText = "⚙️ 掛金率 (全項目統一)";
+            document.getElementById('feeRate').value = globalFeeRate;
+        } else {
+            document.getElementById('feeRateTitle').innerText = `⚙️ 掛金率 (項目ごと：${currentDept.name} )`;
+            // その項目がまだ未設定なら、直前で使っていた割合を引き継いでセットする
+            if (currentData.feeRate === undefined) {
+                currentData.feeRate = lastUsedFeeRate;
+                localStorage.setItem('seisan_multidept_data', JSON.stringify(deptData));
+            } else {
+                // 既に設定されている項目に戻ってきた場合は、その項目の割合を今後の基準値として更新する
+                lastUsedFeeRate = currentData.feeRate;
+            }
+            document.getElementById('feeRate').value = currentData.feeRate;
+        }
 
         denoms.forEach(d => {
             const count = currentData.counts[d.value] || 0;
@@ -672,16 +745,13 @@
             document.getElementById(`amount-${d.value}`).innerText = "¥" + amt.toLocaleString();
         });
         
-        // 🔄 ナビゲーションボタンの動的制御
         const prevStepBtn = document.getElementById('prevStepBtn');
         const nextStepBtn = document.getElementById('nextStepBtn');
 
         if (currentDeptIndex === 0) {
-            // ①の時は前の項目に戻るボタンを非表示にし、進むボタンを横幅100%にする
             prevStepBtn.style.display = 'none';
             nextStepBtn.style.width = '100%';
         } else {
-            // ②〜⑥の時は戻るボタンを表示し、均等に50%ずつ配置する
             prevStepBtn.style.display = 'block';
             prevStepBtn.style.width = '50%';
             nextStepBtn.style.width = '50%';
@@ -690,7 +760,6 @@
             prevStepBtn.innerText = `⬅ 前の項目へ（${prevDept.name}）`;
         }
 
-        // 次に進むボタンのテキスト制御
         if (currentDeptIndex === departments.length - 1) {
             nextStepBtn.innerText = `最初の項目へ（${departments[0].name}）🔄`;
         } else {
@@ -702,7 +771,6 @@
     function jumpToDept(index) {
         if (currentDeptIndex === index) return;
 
-        // 現在の項目に入力があるかチェック
         if (!checkCurrentDeptInput()) {
             const currentDept = departments[currentDeptIndex];
             alert(`現在の項目（${currentDept.name}）の金種（枚数）が入力されていません。他の項目へ移る前に数値を入力してください。`);
@@ -715,7 +783,6 @@
     }
 
     function goToNextStep() {
-        // 現在の項目に入力があるかチェック
         if (!checkCurrentDeptInput()) {
             const currentDept = departments[currentDeptIndex];
             alert(`現在の項目（${currentDept.name}）の金種（枚数）が入力されていません。次の項目へ進む前に数値を入力してください。`);
@@ -732,9 +799,8 @@
     }
 
     function goToPrevStep() {
-        if (currentDeptIndex === 0) return; // 安全策
+        if (currentDeptIndex === 0) return;
 
-        // 現在の項目に入力があるかチェック
         if (!checkCurrentDeptInput()) {
             const currentDept = departments[currentDeptIndex];
             alert(`現在の項目（${currentDept.name}）の金種（枚数）が入力されていません。前の項目へ戻る前に数値を入力してください。`);
@@ -775,6 +841,7 @@
 
         deptData = {};
         globalFeeRate = 75;
+        lastUsedFeeRate = 75; // リセット時も初期化
         isFinalized = false;
         showDecimal = false;
         roundMode = "ceil"; 
@@ -786,6 +853,7 @@
 
         currentDeptIndex = 0;
         initDataStructure();
+        setRateMode(true, true); 
         renderFilterOptions();
         renderDenomRows();
         loadCurrentDeptToUI();
@@ -798,7 +866,7 @@
         const now = new Date();
         const dateStr = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
         document.getElementById('receiptDate').innerText = dateStr;
-        document.getElementById('receiptRate').innerText = `${globalFeeRate}%`;
+        document.getElementById('receiptRate').innerText = isRateGlobal ? `統一 ${globalFeeRate}%` : `項目別に設定`;
 
         const receiptDeptTbody = document.getElementById('receiptDeptRows');
         receiptDeptTbody.innerHTML = "";
@@ -810,6 +878,9 @@
         departments.forEach(dept => {
             const data = deptData[dept.id];
             let deptSales = 0;
+            
+            let appliedRate = isRateGlobal ? globalFeeRate : (data.feeRate !== undefined ? data.feeRate : lastUsedFeeRate);
+
             denoms.forEach(d => {
                 const count = data.counts[d.value] || 0;
                 let amt = count * d.value;
@@ -819,7 +890,7 @@
             });
 
             if (deptSales > 0) {
-                let takehomeRaw = deptSales * (globalFeeRate / 100);
+                let takehomeRaw = deptSales * (appliedRate / 100);
                 let takehome = takehomeRaw;
                 let fee = deptSales - takehome;
 
@@ -839,10 +910,15 @@
                 grandSales += deptSales;
                 grandFee += fee;
                 grandTakehome += takehome;
+                
+                let displayLabel = dept.label;
+                if (!isRateGlobal) {
+                    displayLabel += `<br><span style="font-size:9px;">(${appliedRate}%)</span>`;
+                }
 
                 const row = `
                     <tr>
-                        <td class="center" style="font-weight:bold;">${dept.label}</td>
+                        <td class="center" style="font-weight:bold;">${displayLabel}</td>
                         <td>¥${formatMoney(deptSales)}</td>
                         <td>¥${formatMoney(fee)}</td>
                         <td style="font-weight:bold;">¥${formatMoney(takehome)}</td>
