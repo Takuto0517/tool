@@ -260,6 +260,7 @@
                 <option value="ﾛｰｿﾝ 国際展示場駅前">ﾛｰｿﾝ 国際展示場駅前</option>
                 <option value="ﾛｰｿﾝ 神田明神">ﾛｰｿﾝ 神田明神</option>
                 <option value="ﾛｰｿﾝ 月島駅前">ﾛｰｿﾝ 月島駅前</option>
+                <option value="ｾﾌﾞﾝｲﾚﾌﾞﾝ江東南砂葛西橋通り">ｾﾌﾞﾝｲﾚﾌﾞﾝ江東南砂葛西橋通り</option>
                 <option value="東武ｽﾄｱ晴海三丁目">東武ｽﾄｱ晴海三丁目</option>
                 <option value="ｲｵﾝ 葛西">ｲｵﾝ 葛西</option>
                 <option value="ﾋﾞｯｸｶﾒﾗ 有楽町">ﾋﾞｯｸｶﾒﾗ 有楽町</option>
@@ -434,6 +435,7 @@
         "ﾛｰｿﾝ 国際展示場駅前": "017005",
         "ﾛｰｿﾝ 神田明神": "017081",
         "ﾛｰｿﾝ 月島駅前": "017082",
+        "ｾﾌﾞﾝｲﾚﾌﾞﾝ江東南砂葛西橋通り": "018006",
         "東武ｽﾄｱ晴海三丁目": "019006",
         "ｲｵﾝ 葛西": "080031",
         "ﾋﾞｯｸｶﾒﾗ 有楽町": "084009",
@@ -929,18 +931,34 @@
             const customerCode = locationMaster[locName] || "000000";
             const targetList = finalExportData[locName];
 
+            // 1. 各カテゴリーの出現回数をカウント（抽出時の優先順位ソートに使用）
             const counts = {};
             targetList.forEach(item => { counts[item.categoryId] = (counts[item.categoryId] || 0) + 1; });
             const masterOrder = {};
             categoryMaster.forEach((c, idx) => { masterOrder[c.id] = idx; });
 
-            const sortedList = [...targetList].sort((a, b) => {
+            // 2. 同じカテゴリーのデータを合算する
+            const aggregatedData = {};
+            targetList.forEach(item => {
+                if (!aggregatedData[item.categoryId]) {
+                    aggregatedData[item.categoryId] = {
+                        categoryId: item.categoryId,
+                        categoryName: item.categoryName,
+                        count: 0
+                    };
+                }
+                aggregatedData[item.categoryId].count += item.count;
+            });
+
+            // 3. 合算したデータを配列に変換し、元の条件でソート
+            const sortedList = Object.values(aggregatedData).sort((a, b) => {
                 const countA = counts[a.categoryId] || 0;
                 const countB = counts[b.categoryId] || 0;
                 if (countB !== countA) return countB - countA;
                 return masterOrder[a.categoryId] - masterOrder[b.categoryId];
             });
 
+            // 4. CSVデータとして出力（合算済みの結果を出力）
             sortedList.forEach(item => {
                 const itemInfo = categoryMaster.find(c => c.id === item.categoryId);
                 const csvName = itemInfo ? itemInfo.csvName : item.categoryName;
@@ -950,7 +968,7 @@
                 csvContent += `${dateStr},${formatLocationCode},${formatWorkerCode},${csvName},${item.count}\n`;
             });
         });
-
+        
         const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
         const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
