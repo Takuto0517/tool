@@ -855,27 +855,21 @@
         document.getElementById('summaryBoxTitle').innerText = "📊 集計合算（入力中リアルタイム）";
     }
 
-    function resetAllData() {
+ function resetAllData() {
         if (confirm("全ての入力データを消去して、最初からやり直しますか？")) {
-            const backupFilter = localStorage.getItem('seisan_visible_denoms');
-            const backupLocation = localStorage.getItem('seisan_location');
-            localStorage.clear();
+            localStorage.removeItem('seisan_multidept_data');
+            localStorage.removeItem('seisan_global_feerate');
+            localStorage.removeItem('seisan_rate_mode');
+            localStorage.removeItem('seisan_opt_decimal');
+            localStorage.removeItem('seisan_opt_roundmode');
             
-            if (backupFilter) {
-                localStorage.setItem('seisan_visible_denoms', backupFilter);
-                visibleDenoms = JSON.parse(backupFilter);
-            } else {
-                visibleDenoms = {};
-            }
-            if (backupLocation) {
-                localStorage.setItem('seisan_location', backupLocation);
-            }
-
             deptData = {};
             currentDeptIndex = 0;
             globalFeeRate = 75;
             lastUsedFeeRate = 75;
-            document.getElementById('locationSelect').value = backupLocation || "";
+            
+            // エラーの原因だった「backupLocation」を消し、保存されているロケーションをそのまま維持するように変更
+            document.getElementById('locationSelect').value = localStorage.getItem('seisan_location') || "";
             
             initDataStructure();
             setRateMode(true, true);
@@ -884,7 +878,7 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     }
-
+    
     function openPdfModal() {
         const now = new Date();
         const dateStr = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
